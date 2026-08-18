@@ -49,7 +49,19 @@ $pos = [ovr_cfg()['estampas']['frente']];
    site também não precisa sair de casa. */
 $foraDoSite = ['Outlet'];
 
-$publico = []; $custo = []; $precos = [];
+/* Tipos que não são peça de vestir e não têm vitrine. Gêmeo de
+   CONFIG.catalogo.tiposSemSilhueta no config.js, que já os escondia no
+   navegador. Mesmo caso do Outlet: sumiam da tela e continuavam viajando
+   no catalogo.json público. O Acessório é embalagem zip lock, insumo de
+   expedição que o cliente nunca compra aqui. */
+$tiposForaDoSite = ['Acessório'];
+
+/* O custo começa do que já existia, não do zero. Reconstruir a partir do
+   catálogo público apagava em silêncio toda peça que tinha sido excluída
+   numa rodada anterior: ela sai do público, some da fonte, e na execução
+   seguinte o custo dela evapora. Aqui as antigas ficam e as atuais
+   sobrescrevem. */
+$publico = []; $custo = $antigo; $precos = [];
 foreach ($produtos as $p) {
     $custo[(string) $p['id']] = [
         'precoBase' => $p['precoBase'],
@@ -64,7 +76,9 @@ foreach ($produtos as $p) {
     ];
     $limpo = $p;
     unset($limpo['precoBase'], $limpo['faixas'], $limpo['origem']);   // dinheiro e fornecedor saem do público
-    if (!array_intersect($p['grupos'] ?? [], $foraDoSite)) {
+    $fora = array_intersect($p['grupos'] ?? [], $foraDoSite)
+         || in_array($p['tipo'] ?? '', $tiposForaDoSite, true);
+    if (!$fora) {
         $publico[] = $limpo;
     }
 
