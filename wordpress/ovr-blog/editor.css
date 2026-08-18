@@ -1,0 +1,19 @@
+/* Faz o editor do WordPress parecer com o site na hora de escrever. */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&family=Inter:wght@400;500&display=swap');
+
+.editor-styles-wrapper {
+  background: #fbfaf6;
+  font-family: 'Inter', sans-serif;
+  font-size: 18px; line-height: 1.75; color: #2c2b28;
+}
+.editor-styles-wrapper .wp-block { max-width: 68ch; }
+.editor-styles-wrapper h1, .editor-styles-wrapper h2, .editor-styles-wrapper h3 {
+  font-family: 'Space Grotesk', sans-serif; font-weight: 700;
+  letter-spacing: -0.02em; line-height: 1.08; color: #090a0c;
+}
+.editor-styles-wrapper h2 { text-transform: uppercase; font-size: 32px; }
+.editor-styles-wrapper h3 { font-size: 20px; }
+.editor-styles-wrapper blockquote {
+  border-left: 3px solid #c9ff00; padding-left: 24px;
+  font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 24px; line-height: 1.25;
+}

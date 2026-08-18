@@ -1,0 +1,331 @@
+<meta charset="utf-8">
+<title>OVR — quadro de animação</title>
+<!--
+  Um quadro por carregamento: ?anim=a|b&f=N desenha exatamente o quadro N.
+  Nada de animação em CSS aqui de propósito. O gerador tira um retrato de
+  cada quadro e monta o GIF; se a animação rodasse sozinha, o retrato
+  pegaria um instante indeterminado e a cadência sairia diferente a cada
+  execução.
+-->
+<style>
+  :root {
+    --preto:  #0A0A0A;
+    --volt:   #C9FF00;
+    --papel:  #FAFAF8;
+    --tinta:  #0A0A0A;
+    --fraco:  #8A8A85;
+    --linha:  rgba(255,255,255,.14);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1600px; height: 900px; overflow: hidden; }
+  body { font-family: Inter, sans-serif; -webkit-font-smoothing: antialiased; }
+
+  .palco { width: 1600px; height: 900px; padding: 92px 100px; position: relative; }
+  .palco--escuro { background: var(--preto); color: #fff; }
+  .palco--claro  { background: var(--papel); color: var(--tinta); }
+
+  .sobrancelha {
+    font-size: 17px; font-weight: 600; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--volt); margin-bottom: 22px;
+  }
+  .palco--claro .sobrancelha { color: var(--fraco); }
+
+  .titulo {
+    font-family: 'Space Grotesk', sans-serif; font-weight: 700;
+    font-size: 62px; line-height: 1.08; letter-spacing: -.025em;
+  }
+
+  .legenda { font-size: 20px; color: var(--fraco); }
+
+  /* ---------------- A: cadeia de tokens ---------------- */
+  .cadeia { display: flex; align-items: stretch; gap: 0; margin-top: 96px; }
+  .elo { display: flex; align-items: center; }
+  .cartao {
+    width: 300px; height: 216px; padding: 26px 28px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .cartao__papel   { background: var(--papel); color: var(--tinta); }
+  .cartao__volt    { background: var(--volt);  color: var(--tinta); }
+  .cartao__contorno{ background: transparent;  color: #fff; border: 1px solid var(--linha); }
+  .cartao b {
+    font-size: 14px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--fraco);
+  }
+  .cartao__volt b { color: rgba(10,10,10,.55); }
+  .cartao__contorno b { color: var(--volt); }
+  .cartao span {
+    font-family: 'Space Grotesk', sans-serif; font-weight: 500;
+    font-size: 20px; letter-spacing: -.015em;
+    /* uma linha só: "color/volt/500 = #C9FF00" é o mais longo dos quatro e
+       quebrando no meio ele deixa de ler como um valor único */
+    white-space: nowrap;
+  }
+  .seta { width: 56px; text-align: center; color: var(--volt); font-size: 26px; line-height: 1; }
+
+  /* ---------------- B: escada de preço ---------------- */
+  .colunas { display: flex; gap: 96px; margin-top: 84px; }
+  .lado { width: 360px; flex: none; }
+  .rotulo {
+    font-size: 15px; font-weight: 600; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--fraco); margin-bottom: 10px;
+  }
+  .contador {
+    font-family: 'Space Grotesk', sans-serif; font-weight: 700;
+    font-size: 108px; line-height: .9; letter-spacing: -.04em;
+    font-variant-numeric: tabular-nums;
+  }
+  .sub { font-size: 19px; color: var(--fraco); margin-top: 14px; }
+  .unitario {
+    font-family: 'Space Grotesk', sans-serif; font-weight: 700;
+    font-size: 54px; letter-spacing: -.03em; margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+  .escada { flex: 1; }
+  .faixa {
+    display: grid; grid-template-columns: 150px 1fr auto; align-items: center;
+    padding: 21px 26px; border: 1px solid rgba(10,10,10,.12); border-bottom: none;
+    font-size: 21px;
+  }
+  .faixa:last-of-type { border-bottom: 1px solid rgba(10,10,10,.12); }
+  .faixa--viva { background: var(--volt); border-color: var(--volt); }
+  .faixa--viva + .faixa { border-top-color: var(--volt); }
+  .faixa b { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .faixa i { font-style: normal; font-size: 17px; color: var(--fraco); }
+  .faixa--viva i { color: rgba(10,10,10,.62); }
+  .faixa u {
+    text-decoration: none; font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums;
+  }
+  .nota { font-size: 18px; color: var(--fraco); margin-top: 26px; }
+
+  /* ---------------- C: densidade operacional ----------------
+     Os campos são posicionados em coordenada absoluta e movidos por
+     interpolação. É o que o smart-animate do Figma faz: os mesmos nós
+     mudando de lugar e de corpo, não dois desenhos diferentes. */
+  .palco--cobalto { background: #2749FF; color: #FBFAF6; }
+  .palco--cobalto .sobrancelha { color: var(--volt); }
+  .apoio { font-size: 20px; color: #D8DFFF; margin-top: 18px; max-width: 900px; }
+  .mesa {
+    position: relative; margin-top: 54px; width: 1400px; height: 300px;
+    background: #fff; color: #090A0C; overflow: hidden;
+  }
+  .campo { position: absolute; white-space: nowrap; line-height: 1; }
+  .campo--forte { font-family: 'Space Grotesk', sans-serif; font-weight: 700; letter-spacing: -.02em; }
+  .campo--rot { font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #6B6B66; }
+  .campo--num { font-variant-numeric: tabular-nums; }
+  .regua { position: absolute; left: 0; right: 0; height: 1px; background: rgba(9,10,12,.10); }
+  .cta {
+    position: absolute; background: var(--volt); color: #090A0C;
+    font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+    padding: 18px 30px; font-size: 14px;
+  }
+  /* A linha fantasma insinua que a lista continua abaixo do corte. Sem ela
+     a superfície parece ter só três pedidos, e a frase "cabem trinta e oito"
+     fica valendo por promessa em vez de por evidência. */
+  .fantasma { opacity: .22; }
+</style>
+
+<div id="raiz"></div>
+
+<script>
+const P = new URLSearchParams(location.search);
+const anim = (P.get('anim') || 'a').toLowerCase();
+const f = parseInt(P.get('f') || '0', 10);
+const raiz = document.getElementById('raiz');
+
+/* -------------------------------------------------------------
+   A — cadeia de tokens
+   Quatro cartões entram em sequência. O roteiro abaixo diz, para
+   cada quadro, quantos cartões já apareceram e a opacidade do que
+   está entrando: é isso que reproduz a cadência do GIF original.
+   ------------------------------------------------------------- */
+const ELOS = [
+  { et: 'Primitive', v: 'color/volt/500 = #C9FF00', cls: 'cartao__papel' },
+  { et: 'Semantic',  v: 'color/accent/primary',     cls: 'cartao__volt' },
+  { et: 'Component', v: 'Button / Primary',         cls: 'cartao__contorno' },
+  { et: 'Code',      v: 'var(--accent)',            cls: 'cartao__papel' },
+];
+
+/* Cada quadro tem que ser DIFERENTE do anterior. O PIL descarta quadros
+   consecutivos idênticos ao gravar o GIF, e aí a lista de durações
+   desalinha em silêncio: o respiro cai no quadro errado. Por isso o
+   respiro não é um quadro extra repetido — é o último passo da entrada
+   segurando por mais tempo. */
+function desenhaA(f) {
+  // 0: só título | 1..16: quatro elos, 4 passos cada | 17..19: legenda
+  let prontos = 0, entrando = 0;
+  if (f >= 1 && f <= 16) {
+    const bloco = Math.floor((f - 1) / 4);   // 0..3
+    const passo = (f - 1) % 4;               // 0..3
+    prontos = bloco;
+    entrando = (passo + 1) / 4;              // .25 .50 .75 1
+  } else if (f > 16) {
+    prontos = 4; entrando = 0;
+  }
+  const legenda = f <= 16 ? 0 : (f - 16) / 3;  // .33 .67 1
+
+  const elos = ELOS.map((e, i) => {
+    let op = i < prontos ? 1 : (i === prontos ? entrando : 0);
+    if (op <= 0) return '';
+    const seta = i === 0 ? '' : `<div class="seta" style="opacity:${op.toFixed(2)}">→</div>`;
+    return `<div class="elo">${seta}
+      <div class="cartao ${e.cls}" style="opacity:${op.toFixed(2)}">
+        <b>${e.et}</b><span>${e.v}</span>
+      </div></div>`;
+  }).join('');
+
+  raiz.innerHTML = `<div class="palco palco--escuro">
+    <div class="sobrancelha">Tokens that carry intent</div>
+    <div class="titulo">From raw value<br>to role in the interface.</div>
+    <div class="cadeia">${elos}</div>
+    <div class="legenda" style="margin-top:56px; opacity:${legenda.toFixed(2)}">
+      One decision, four names. Rename the primitive and every layer above it follows.
+    </div>
+  </div>`;
+}
+
+/* -------------------------------------------------------------
+   B — escada de preço
+   A faixa acesa é DERIVADA da quantidade mostrada, nunca definida
+   à parte. No GIF anterior as duas eram calculadas em separado e
+   num quadro elas discordaram: 12 peças com a linha 25–49 acesa.
+   ------------------------------------------------------------- */
+const FAIXAS = [
+  { rot: '1–9',   min: 1,   max: 9,    preco: 112.84 },
+  { rot: '10–24', min: 10,  max: 24,   preco: 89.53  },
+  { rot: '25–49', min: 25,  max: 49,   preco: 80.84  },
+  { rot: '50–99', min: 50,  max: 99,   preco: 78.05  },
+  { rot: '100+',  min: 100, max: null, preco: 75.66  },
+];
+const PARADAS = [1, 12, 30, 60, 120];
+const brl = v => 'R$ ' + v.toFixed(2).replace('.', ',');
+const daQtd = q => FAIXAS.find(x => q >= x.min && (x.max == null || q <= x.max));
+
+function desenhaB(f) {
+  // 0 abre em 1 peça; 1..16 sobem em quatro trechos de quatro passos.
+  // O último passo de cada trecho é que segura — ver a nota em desenhaA
+  // sobre quadros repetidos.
+  let qtd;
+  if (f === 0) qtd = PARADAS[0];
+  else {
+    const bloco = Math.min(3, Math.floor((f - 1) / 4));
+    const passo = ((f - 1) % 4) + 1;                 // 1..4
+    const de = PARADAS[bloco], ate = PARADAS[bloco + 1];
+    qtd = Math.round(de + (ate - de) * (passo / 4));
+  }
+  const viva = daQtd(qtd);
+
+  const linhas = FAIXAS.map(x => `
+    <div class="faixa ${x === viva ? 'faixa--viva' : ''}">
+      <b>${x.rot}</b>
+      <i>${x.preco === FAIXAS[0].preco ? 'base' : 'saves ' + Math.round((1 - x.preco / FAIXAS[0].preco) * 100) + '%'}</i>
+      <u>${brl(x.preco)}</u>
+    </div>`).join('');
+
+  raiz.innerHTML = `<div class="palco palco--claro">
+    <div class="sobrancelha">Price break</div>
+    <div class="titulo">Price drops<br>with volume.</div>
+    <div class="colunas">
+      <div class="lado">
+        <div class="rotulo">Quantity</div>
+        <div class="contador">${qtd}</div>
+        <div class="sub">pieces in the order</div>
+        <div class="rotulo" style="margin-top:38px">Unit price</div>
+        <div class="unitario">${brl(viva.preco)}</div>
+      </div>
+      <div class="escada">
+        ${linhas}
+        <div class="nota">The ladder is the offer. Nobody has to ask for a wholesale quote.</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* -------------------------------------------------------------
+   C — densidade operacional
+   O mesmo pedido sai de bloco de vitrine e vira linha de painel,
+   dentro de uma superfície de ALTURA FIXA. A altura não mudar é o
+   argumento inteiro: é o mesmo espaço, e nele passam a caber várias
+   linhas em vez de um preço só.
+   ------------------------------------------------------------- */
+const ent = t => t * t * (3 - 2 * t);            // suaviza começo e fim
+const misturar = (a, b, t) => a + (b - a) * t;
+
+// [x, y, corpo] na vitrine → no painel
+const CAMPOS = [
+  { txt: 'Order',          de: [36,  34, 13], para: [36,   40, 11], cls: 'campo--rot' },
+  { txt: '#0018',          de: [36,  60, 15], para: [36,   86, 14], cls: 'campo--num' },
+  { txt: 'Coletivo Norte', de: [36, 104, 40], para: [250,  86, 14], cls: 'campo--forte', viraNormal: true },
+  { txt: 'Approved',       de: [36, 176, 16], para: [700,  86, 14], cls: '', cor: '#0A7D33' },
+  { txt: 'R$ 788,00',      de: [36, 216, 44], para: [1160, 86, 14], cls: 'campo--forte campo--num' },
+];
+// cabeçalhos que só existem no painel
+const CABECA = [
+  { txt: 'Client', x: 250 }, { txt: 'State', x: 700 }, { txt: 'Margin', x: 1160 },
+];
+const LINHAS = [
+  { y: 138, cols: ['#0017', 'Academia Forma', 'In production', 'R$ 512,40'], cor: '#9F5D00' },
+  { y: 190, cols: ['#0014', 'Padaria do Zé',  'Quoted',        'R$ 296,10'], cor: '#6B6B66' },
+];
+const XS = [36, 250, 700, 1160];
+
+function desenhaC(f) {
+  // 0 vitrine | 1..8 transforma | 9..12 entram as outras linhas | 13..15 legenda
+  let t = 0, linhas = 0, legenda = 0;
+  if (f >= 1 && f <= 8) t = ent(f / 8);
+  else if (f > 8) { t = 1; }
+  if (f >= 9 && f <= 12) linhas = (f - 8) / 4;
+  else if (f > 12) linhas = 1;
+  if (f >= 13) legenda = (f - 12) / 3;
+
+  const campos = CAMPOS.map(c => {
+    const x = misturar(c.de[0], c.para[0], t);
+    const y = misturar(c.de[1], c.para[1], t);
+    const s = misturar(c.de[2], c.para[2], t);
+    // o nome do cliente é título na vitrine e vira dado no painel
+    const peso = c.viraNormal && t > .6 ? 'font-family:Inter;font-weight:600;' : '';
+    return `<div class="campo ${c.cls}" style="left:${x.toFixed(1)}px; top:${y.toFixed(1)}px;
+            font-size:${s.toFixed(2)}px; ${c.cor ? `color:${c.cor};` : ''} ${peso}">${c.txt}</div>`;
+  }).join('');
+
+  const cabeca = CABECA.map(h => `<div class="campo campo--rot" style="left:${h.x}px; top:40px;
+      font-size:11px; opacity:${t.toFixed(2)}">${h.txt}</div>`).join('');
+
+  const outras = LINHAS.map((l, i) => {
+    /* rampa 1,5 e não 2: com 2 as duas linhas chegavam a opacidade cheia
+       já no penúltimo quadro, e o último saía idêntico ao anterior — o PIL
+       colapsa quadros repetidos e as durações escorregam. */
+    const op = Math.max(0, Math.min(1, linhas * 1.5 - i * .5));
+    if (op <= 0) return '';
+    return l.cols.map((txt, k) => `<div class="campo ${k === 3 ? 'campo--forte campo--num' : ''}
+        ${k === 0 ? 'campo--num' : ''}" style="left:${XS[k]}px; top:${l.y}px; font-size:14px;
+        opacity:${op.toFixed(2)}; ${k === 2 ? `color:${l.cor};` : ''}
+        ${k === 1 ? 'font-weight:600;' : ''}">${txt}</div>`).join('');
+  }).join('');
+
+  const reguas = t < .5 ? '' : [70, 122, 174, 226].map(y =>
+    `<div class="regua" style="top:${y}px; opacity:${((t - .5) * 2).toFixed(2)}"></div>`).join('');
+
+  raiz.innerHTML = `<div class="palco palco--cobalto">
+    <div class="sobrancelha">Operational density</div>
+    <div class="titulo">Same tokens. Twice the density.</div>
+    <div class="mesa">
+      ${reguas}${cabeca}${campos}${outras}
+      <div class="cta" style="left:1120px; top:196px; opacity:${(1 - Math.min(1, t * 2)).toFixed(2)}">Build your order</div>
+      <div class="fantasma" style="opacity:${(linhas * .22).toFixed(3)}">
+        ${['#0011', 'Studio Meia-Noite', 'Quoted', 'R$ 184,00'].map((txt, k) =>
+          `<div class="campo ${k === 3 ? 'campo--forte campo--num' : ''} ${k === 0 ? 'campo--num' : ''}"
+                style="left:${XS[k]}px; top:242px; font-size:14px;
+                ${k === 1 ? 'font-weight:600;' : ''}">${txt}</div>`).join('')}
+      </div>
+    </div>
+    <div class="apoio" style="opacity:${legenda.toFixed(2)}">
+      Same card, same tokens. The storefront gives one order the whole block.
+      The panel gives it a row, and fits thirty-eight.
+    </div>
+  </div>`;
+}
+
+({ a: desenhaA, b: desenhaB, c: desenhaC }[anim] || desenhaA)(f);
+document.title = 'pronto';
+</script>

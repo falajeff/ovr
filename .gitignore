@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+
+# artefatos de empacotamento, gerados na hora de publicar
+*.zip
+
+# fotos do fornecedor: entram no pipeline para descobrir a cor real da
+# malha e nunca vão para o site. São 19 MB de material que não é nosso,
+# então ficam fora do repositório.
+assets/img/_originais/
+assets/img/_novas/
+
+# saída bruta do raspador, regerada por ferramentas/atualizar.sh
+ferramentas/bruto-fornecedor.json
+
+# Endereço do fornecedor. Fora do repositório pelo mesmo motivo do custo:
+# o código publicado não precisa dizer de quem a OVR compra.
+ferramentas/fornecedor.json
+
+# configuração de ferramenta local
+.claude/
+node_modules/
+
+# Custo e markup. Estes dois arquivos são a razão de existir da separação
+# de preço: se entrarem no repositório, publicar o código devolve para o
+# mundo exatamente o que saiu do navegador.
+api/preco-config.php
+api/catalogo-custo.php

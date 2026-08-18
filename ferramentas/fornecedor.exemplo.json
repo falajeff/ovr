@@ -1,0 +1,6 @@
+{
+  "_leia": "Copie para fornecedor.json e ponha os valores reais. Este arquivo existe para o raspador rodar em qualquer máquina sem que o repositório diga de quem a OVR compra. Mesma ideia do api/preco-config.exemplo.php.",
+  "base": "https://www.exemplo-fornecedor.com.br",
+  "assets": "https://assets-exemplo",
+  "nome": "Fornecedor"
+}

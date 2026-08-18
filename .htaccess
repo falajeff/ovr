@@ -1,0 +1,94 @@
+# =============================================================
+# OVR — configuração do servidor (Hostinger / Apache / LiteSpeed)
+# Fica na raiz do public_html.
+#
+# ATENÇÃO: o subdomínio do blog mora em public_html/blog, então o
+# Apache lê ESTE arquivo também nas requisições do blog. Por isso
+# quase tudo aqui é condicionado a não ser o blog — senão a política
+# de conteúdo derruba o painel do WordPress.
+# =============================================================
+
+# Marca as requisições que são do blog para poder excluí-las das regras
+<IfModule mod_setenvif.c>
+  SetEnvIf Host "^blog\." EH_BLOG=1
+</IfModule>
+
+# ---------- 1. HTTPS e URL limpa ----------
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  RewriteCond %{HTTPS} off
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+
+  # O blog tem endereço próprio. Quem chegar em /blog vai para lá,
+  # e assim o mesmo conteúdo não existe em dois endereços.
+  RewriteCond %{ENV:EH_BLOG} !=1
+  RewriteRule ^blog(/.*)?$ https://blog.ovrcamisetas.com.br$1 [R=301,L]
+
+  # /catalogo abre catalogo.html — só no site, nunca no blog
+  RewriteCond %{ENV:EH_BLOG} !=1
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME}\.html -f
+  RewriteRule ^(.*)$ $1.html [L]
+
+  # Nada de baixar script interno, original pesado ou documentação
+  RewriteCond %{ENV:EH_BLOG} !=1
+  RewriteRule ^(ferramentas/|assets/img/_originais/) - [R=404,L]
+  RewriteCond %{ENV:EH_BLOG} !=1
+  RewriteRule \.(py|sh|md|log|bak|sql|zip)$ - [R=404,L]
+</IfModule>
+
+# ---------- 2. cabeçalhos de segurança ----------
+<IfModule mod_headers.c>
+  # Só executa script do próprio site. Se alguém injetar HTML, o navegador ignora.
+  # Fora do blog: o WordPress usa script embutido e quebraria com esta regra.
+  #
+  # connect-src abre UMA exceção: o painel. O carrinho manda o pedido para
+  # painel.ovrcamisetas.com.br, que é outro host, e com 'self' sozinho o
+  # navegador nem tenta a conexão — nem chega a ser questão de CORS.
+  # É um endereço só, e é nosso; qualquer outro destino continua barrado.
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://painel.ovrcamisetas.com.br; form-action 'none'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests" env=!EH_BLOG
+
+  # Estes valem para os dois, blog inclusive
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+  # O site não pode ser embutido em iframe. O blog pode, no próprio domínio,
+  # porque o painel do WordPress usa iframe para pré-visualizar.
+  Header always set X-Frame-Options "DENY" env=!EH_BLOG
+  Header always set X-Frame-Options "SAMEORIGIN" env=EH_BLOG
+
+  Header unset X-Powered-By
+  Header unset Server
+</IfModule>
+
+# ---------- 3. arquivos e pastas escondidos ----------
+RedirectMatch 404 /\.(git|env|htaccess|htpasswd)
+Options -Indexes
+
+# ---------- 4. desempenho ----------
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
+</IfModule>
+
+<IfModule mod_expires.c>
+  ExpiresActive On
+  # imagem e código são versionados por ?v=, então podem ficar guardados
+  ExpiresByType image/webp "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  # o catálogo muda quando você raspa de novo
+  ExpiresByType application/json "access plus 1 hour"
+  ExpiresByType text/html "access plus 10 minutes"
+</IfModule>
+
+# ---------- 5. página não encontrada ----------
+# Só do site. O WordPress trata o 404 dele por conta própria.
+<IfModule mod_setenvif.c>
+  ErrorDocument 404 /404.html
+</IfModule>

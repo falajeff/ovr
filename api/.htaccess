@@ -1,0 +1,8 @@
+# Só os dois endpoints são chamáveis. O resto desta pasta é motor e dado
+# de custo: não tem por que existir uma URL para eles.
+<FilesMatch ".*">
+  Require all denied
+</FilesMatch>
+<FilesMatch "^(preco|carrinho)\.php$">
+  Require all granted
+</FilesMatch>
