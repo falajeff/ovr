@@ -57,6 +57,20 @@
 }
 
 /* ============================ reset ========================= */
+/* O atributo `hidden` do HTML esconde de verdade, sempre.
+
+   A regra do navegador é `[hidden] { display: none }`, com a
+   especificidade mais baixa que existe: qualquer classe com `display`
+   próprio a derruba, e o elemento fica visível com o atributo posto.
+   Falha calada, das piores de achar.
+
+   Este arquivo já tinha QUATRO remendos pontuais para o mesmo caso, e
+   o quinto apareceu no bloco de cupom, que abria junto com o botão de
+   "tenho um cupom". Uma regra resolve a família inteira, inclusive a
+   próxima. O !important existe porque o ponto é vencer o display da
+   classe — é a intenção da regra, não um atalho.                      */
+[hidden] { display: none !important; }
+
 *, *::before, *::after { box-sizing: border-box; }
 * { margin: 0; padding: 0; }
 html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
@@ -470,9 +484,6 @@ ul, ol { list-style: none; }
 .miniaturas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
 
 .campo { display: flex; flex-direction: column; gap: 12px; }
-/* obrigatório em todo bloco com display explícito: a classe vence o
-   [hidden] do navegador e o elemento continuaria visível.          */
-.campo[hidden], .filme__painel [hidden] { display: none; }
 .campo > label { font-family: var(--fonte-titulo); font-weight: 700; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
 .opcoes { display: flex; flex-wrap: wrap; gap: 8px; }
 .opcao {
@@ -500,8 +511,7 @@ ul, ol { list-style: none; }
                 font-weight: 700; font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
                 color: var(--texto-fraco); }
 .medida__cm { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
-/* obrigatório: `display:flex` da classe vence o [hidden] do navegador */
-.medida__cm[hidden] { display: none; }
+
 .medida__cm input {
   width: 74px; padding: 10px 12px; min-height: 44px;
   border: 1px solid var(--fio); background: var(--paper-0);
@@ -628,8 +638,7 @@ ul, ol { list-style: none; }
   /* dígito de largura fixa: o selo não "pula" de 9 para 10 peças */
   font-variant-numeric: tabular-nums;
 }
-/* a classe tem display explícito, então o [hidden] do navegador perde */
-.nav__cesta__n[hidden] { display: none; }
+
 
 .cart { padding-block: clamp(40px, 5vw, 64px) clamp(60px, 8vw, 100px); }
 .cart__lista { border-top: 1px solid var(--fio); margin-bottom: clamp(28px, 4vw, 44px); }
@@ -929,8 +938,7 @@ ul, ol { list-style: none; }
   box-shadow: 0 18px 44px rgba(9, 10, 12, .28);
   display: flex; flex-direction: column;
 }
-/* a classe tem display explícito, então o [hidden] do navegador perde */
-.previa[hidden] { display: none; }
+
 .previa__topo {
   display: flex; align-items: center; justify-content: space-between;
   padding: 16px 18px; border-bottom: 1px solid var(--fio);
