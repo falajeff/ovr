@@ -502,6 +502,25 @@ function ovr_g_tela_pedidos() {
         return;
     }
 
+/* Selo do cupom, ao lado do nome do cliente.
+
+   Aqui e não numa coluna própria: coluna só para isto ficaria vazia na
+   esmagadora maioria das linhas, e o que pede atenção é o AVISO, não o
+   código do cupom. Segue a mesma ideia do "custo em falta" ao lado da
+   margem.                                                              */
+function ovr_g_selo_cupom(int $id): string {
+    $st = get_post_meta($id, '_ovr_cupom_st', true);
+    if (!$st) return '';
+    $cod = get_post_meta($id, '_ovr_cupom', true);
+
+    if ($st === 'ok') {
+        return sprintf('<br><span class="g-cupom g-cupom--ok">cupom %s</span>', esc_html($cod));
+    }
+    return sprintf('<br><span class="g-cupom g-cupom--alerta" title="%s">%s</span>',
+        esc_attr(ovr_cupom_recado($st)),
+        esc_html($st === 'repetido' ? 'já comprou antes — cupom não valeria' : 'cupom sem CPF válido'));
+}
+
     echo '<div class="g-tabela"><table><thead><tr>'
        . '<th>Pedido</th><th>Cliente</th><th>Situação</th><th>Arte</th>'
        . '<th class="g-dir">Receita</th><th class="g-dir">A receber</th><th class="g-dir">Margem</th><th>Parado</th>'
@@ -553,7 +572,7 @@ function ovr_g_tela_pedidos() {
                 </tr>',
             esc_url(ovr_g_url('pedido', ['id' => $id])),
             esc_html(get_the_title($id)),
-            esc_html(get_post_meta($id, '_ovr_cliente_nome', true) ?: '—'),
+            esc_html(get_post_meta($id, '_ovr_cliente_nome', true) ?: '—') . ovr_g_selo_cupom($id),
             $troca,
             esc_html($artes[$arte] ?? $arte),
             esc_html(ovr_reais($receita)),
@@ -1233,6 +1252,12 @@ a{color:inherit}
 .g-link{font-weight:500;text-underline-offset:3px}
 .g-atraso{color:#b00020;font-weight:500}
 .g-aviso{display:inline-block;background:#fff3d6;color:#8a5a00;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;margin-left:6px;white-space:nowrap}
+/* Selo do cupom. Mesma caixinha do aviso de custo, em duas cores: verde
+   quando a pessoa tinha direito, vermelho quando não tinha. Sem
+   margem-left porque ele entra numa linha própria, abaixo do nome. */
+.g-cupom{display:inline-block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;margin-top:3px;white-space:nowrap}
+.g-cupom--ok{background:#e3f5e8;color:#0a5c28}
+.g-cupom--alerta{background:#fde8e8;color:#9b1c1c}
 .g-selo{display:inline-flex;align-items:center;gap:6px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--selo)}
 .g-selo::before{content:'';width:7px;height:7px;background:var(--selo);border-radius:50%}
 .g-barra__col{width:120px}
