@@ -44,11 +44,16 @@
   # Só executa script do próprio site. Se alguém injetar HTML, o navegador ignora.
   # Fora do blog: o WordPress usa script embutido e quebraria com esta regra.
   #
-  # connect-src abre UMA exceção: o painel. O carrinho manda o pedido para
-  # painel.ovrcamisetas.com.br, que é outro host, e com 'self' sozinho o
-  # navegador nem tenta a conexão — nem chega a ser questão de CORS.
-  # É um endereço só, e é nosso; qualquer outro destino continua barrado.
-  Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://painel.ovrcamisetas.com.br; form-action 'none'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests" env=!EH_BLOG
+  # connect-src abre DUAS saídas, e só estas duas. O painel, para onde
+  # vai o pedido e de onde vem a conta do cliente. E o ViaCEP, que
+  # preenche o endereço a partir do CEP na tela de conta.
+  #
+  # Liberar o ViaCEP não enfraquece a regra: ele é serviço público de
+  # leitura, sem chave e sem gravação, então não serve de destino para
+  # exfiltrar dado, que é do que o connect-src protege. Qualquer outro
+  # endereço continua barrado, e o navegador nem tenta a conexão: não
+  # chega a ser questão de CORS.
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://painel.ovrcamisetas.com.br https://viacep.com.br; form-action 'none'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests" env=!EH_BLOG
 
   # Estes valem para os dois, blog inclusive
   Header always set X-Content-Type-Options "nosniff"

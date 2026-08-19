@@ -142,6 +142,16 @@ ul, ol { list-style: none; }
   border-bottom: 1px solid var(--fio-inverso);
 }
 .nav__interno { display: flex; align-items: center; gap: var(--e-32); min-height: var(--nav-altura); }
+/* A marca nunca encolhe. Sem isto, qualquer item que cresça na barra
+   rouba largura dela primeiro: com o botão de conta em "Minha conta" o
+   logotipo caía de 113px para 14px, virando um risco na tela. */
+.nav__marca { flex: none; }
+/* Botão de barra não quebra em duas linhas. "Falar agora" pede 146px e
+   estava sendo espremido para 124, virando duas linhas de 78px de
+   altura ao lado de uma cesta de 40. Nowrap deixa o item pedir o que
+   precisa, e quem cede espaço passa a ser o menu de links, que tem gap
+   de sobra.                                                            */
+.nav .btn { white-space: nowrap; }
 .nav__marca img { height: 40px; width: auto; }
 .nav__links { display: flex; gap: var(--e-32); margin-inline: auto; }
 .nav__links a {
@@ -713,11 +723,16 @@ ul, ol { list-style: none; }
 /* O link do cabeçalho nasce escondido e o JavaScript o revela quando
    sabe se é "Entrar" ou "Minha conta". Aparecer com o rótulo errado e
    trocar depois lê como bug. */
-.nav__conta {
-  font-size: 13px; letter-spacing: .02em; white-space: nowrap;
-  text-decoration: none; color: inherit; opacity: .85;
+/* Botão de contorno, e não o volt: a barra já tem um botão volt, que é
+   o "Falar agora". Dois volts lado a lado brigam, e o que fecha venda
+   perde a vez. Contorno lê como botão e cede a hierarquia. */
+.btn--contorno {
+  border-color: currentColor; background: transparent; color: inherit;
 }
-.nav__conta:hover { opacity: 1; text-decoration: underline; text-underline-offset: 4px; }
+.btn--contorno:hover { background: var(--paper-0); color: var(--ink-950); border-color: var(--paper-0); }
+
+/* Menor que o "Falar agora" pelo mesmo motivo: é ação secundária. */
+.nav__conta { padding: 12px 18px; font-size: 12px; white-space: nowrap; }
 
 .conta { padding-block: 64px 96px; }
 /* Coluna estreita nos formulários: campo largo demais custa precisão
@@ -778,12 +793,15 @@ ul, ol { list-style: none; }
   letter-spacing: .08em; text-transform: uppercase; color: var(--texto-fraco);
 }
 
+/* O botão de conta sai antes do celular. De 1100 para baixo a barra já
+   está disputando espaço, e "Minha conta" é o item mais largo dela. O
+   menu continua tendo a entrada, então nada se perde. */
+@media (max-width: 1100px) { .nav__conta { display: none; } }
+
 @media (max-width: 760px) {
   .conta__grade { grid-template-columns: 1fr; gap: 24px; }
   .conta { padding-block: 40px 64px; }
-  /* O link de conta sai do cabeçalho no celular: lá o espaço é da
-     cesta e do menu, e o item já existe dentro do menu. */
-  .nav__conta { display: none; }
+
 }
 
 /* ------------------------ cupom -------------------------------- */
