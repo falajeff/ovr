@@ -88,6 +88,11 @@ function ovr_campos_pedido() {
             '_ovr_valor_itens' => ['Valor dos itens', 'dinheiro'],
             '_ovr_valor_frete' => ['Frete cobrado', 'dinheiro'],
             '_ovr_desconto'    => ['Desconto', 'dinheiro'],
+            /* Preenchido pelo site quando o cliente aplica cupom. Fica
+               editável porque a decisão de honrar ou não é sua: o
+               pedido do site é orçamento, e quem fecha é o WhatsApp. */
+            '_ovr_cupom'       => ['Cupom usado', 'text',
+                                   'Vem do site. O aviso ao lado do cliente na lista diz se a pessoa tinha direito.'],
             /* Os dois campos abaixo são disjuntos de propósito. Se o
                frete estivesse dentro do custo, o cálculo automático
                somaria de novo e o pedido apareceria com o dobro.     */
@@ -408,6 +413,17 @@ add_action('manage_pedido_posts_custom_column', function ($col, $post_id) {
         case 'cliente':
             echo esc_html($m('_ovr_cliente_nome') ?: '—');
             if ($m('_ovr_cliente_zap')) echo '<br><span style="color:#666">' . esc_html($m('_ovr_cliente_zap')) . '</span>';
+            /* O cupom aparece aqui e não numa coluna própria: coluna só
+               para isso ficaria vazia na esmagadora maioria das linhas,
+               e o que precisa de atenção é o AVISO, não o código. */
+            $st = $m('_ovr_cupom_st');
+            if ($st && $st !== 'ok') {
+                printf('<br><span style="color:#b00020;font-size:11px">%s</span>',
+                    esc_html(ovr_cupom_recado($st)));
+            } elseif ($st === 'ok') {
+                printf('<br><span style="color:#0a7d33;font-size:11px">cupom %s · %s</span>',
+                    esc_html($m('_ovr_cupom')), esc_html(ovr_cupom_recado($st)));
+            }
             break;
         case 'tipo':
             echo esc_html(ovr_tipos_pedido()[$m('_ovr_tipo')] ?? '—');

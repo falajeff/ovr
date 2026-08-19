@@ -115,6 +115,12 @@ const Carrinho = (() => {
     return catalogo;
   }
 
+  /* O cupom é do momento da compra, como o frete: fica fora do
+     carrinho guardado. Se a pessoa voltar amanhã, digita de novo — e
+     o servidor confere de novo, que é o que importa. */
+  let cupomAtivo = null;
+  const usarCupom = c => { cupomAtivo = c; };
+
   async function calcular() {
     const cat = await comCatalogo();
     const itens = ler().map(i => {
@@ -125,11 +131,11 @@ const Carrinho = (() => {
       return produto ? { ...i, produto } : { ...i, indisponivel: true };
     });
     const vendaveis = itens.filter(i => !i.indisponivel);
-    const conta = await Preco.consultarCarrinho(vendaveis);
+    const conta = await Preco.consultarCarrinho(vendaveis, cupomAtivo);
     return { ...conta, todos: itens, sumidos: itens.filter(i => i.indisponivel) };
   }
 
-  return { ler, adicionar, remover, mudarQtd, apagar, contar, calcular, avisar };
+  return { ler, adicionar, remover, mudarQtd, apagar, contar, calcular, avisar, usarCupom };
 })();
 
 
@@ -266,6 +272,34 @@ const Carrinho = (() => {
       return;
     }
 
+    /* ---------------------- cupom ---------------------------------
+       O documento fica aqui dentro, e não no formulário, porque quem
+       não usa cupom não precisa informar CPF para pedir um orçamento.
+       Nada de percentual ou teto neste arquivo: a tela só mostra o que
+       o servidor respondeu. */
+    const blocoCupom = c => {
+      const r = c.cupom || {};
+      const aberto = !!cupomAberto || !!r.codigo || !!r.erro;
+      return `
+        <div class="cupom" data-cupom>
+          ${aberto ? '' : `<button type="button" class="cupom__abrir" data-cupom-abrir>Tenho um cupom</button>`}
+          <div class="cupom__campos"${aberto ? '' : ' hidden'}>
+            <label class="campo"><span>Cupom</span>
+              <span class="cupom__linha">
+                <input type="text" data-cupom-codigo placeholder="Código" autocomplete="off"
+                       spellcheck="false" value="${esc(cupomDigitado.codigo)}">
+                <button type="button" class="btn btn--linha" data-cupom-aplicar>Aplicar</button>
+              </span></label>
+            <label class="campo"><span>CPF ou CNPJ</span>
+              <input type="text" data-cupom-doc autocomplete="off" placeholder="000.000.000-00"
+                     value="${esc(cupomDigitado.documento)}">
+              <em class="t-meta">Confere se é a sua primeira compra, e vai na nota.</em></label>
+            ${r.erro ? `<p class="cupom__aviso cupom__aviso--erro">${esc(r.erro)}</p>` : ''}
+            ${r.codigo ? `<p class="cupom__aviso cupom__aviso--ok">Cupom ${esc(r.codigo)} aplicado${r.noTeto ? `, no teto de ${reais(r.desconto)}` : ''}. <button type="button" class="cupom__tirar" data-cupom-tirar>Tirar</button></p>` : ''}
+          </div>
+        </div>`;
+    };
+
     const linha = (l, i) => `
       <div class="cart__item">
         <div class="cart__desc">
@@ -303,9 +337,23 @@ const Carrinho = (() => {
           <div class="cart__resumo">
             ${c.faixa ? `<div class="resumo__linha"><span>Faixa</span><strong>${esc(c.faixa.rotulo)}</strong></div>` : ''}
             ${c.embalagem ? `<div class="resumo__linha"><span>Embalagem</span><strong>${esc(c.embalagem.rotulo)}</strong></div>` : ''}
+            ${c.desconto > 0 ? `
+              <div class="resumo__linha"><span>Subtotal</span><strong>${reais(c.total)}</strong></div>
+              <div class="resumo__linha resumo__desconto">
+                <span>${esc(c.cupom.rotulo)}${c.cupom.noTeto ? '' : ` (${c.cupom.percentual}%)`}</span>
+                <strong>− ${reais(c.desconto)}</strong>
+              </div>` : ''}
             <div class="resumo__linha"><span>Frete</span><strong data-frete-valor>${c.freteGratis ? 'Grátis' : 'A combinar'}</strong></div>
-            <div class="resumo__linha resumo__total"><span>Total</span><strong data-total-geral>${reais(c.total)}</strong></div>
+            <div class="resumo__linha resumo__total"><span>Total</span><strong data-total-geral>${reais(c.aPagar)}</strong></div>
             ${!c.freteGratis ? `<p class="t-meta">Frete grátis a partir de ${reais(CONFIG.venda.freteGratis.valor)} para ${CONFIG.venda.freteGratis.estados.join(', ')}.</p>` : ''}
+
+            <!-- Sem o desconto o pedido passava dos R$ 1.500 e ia de graça;
+                 com ele, não passa mais. Dizer isso na cara evita que o
+                 cliente descubra no fim e ache que foi pego. -->
+            ${c.desconto > 0 && c.total >= CONFIG.venda.freteGratis.valor && c.aPagar < CONFIG.venda.freteGratis.valor
+              ? `<p class="cart__alerta">Com o cupom o pedido fica abaixo de ${reais(CONFIG.venda.freteGratis.valor)} e sai da faixa de frete grátis. Se preferir, tire o cupom: dependendo do seu CEP o frete custa mais que o desconto.</p>` : ''}
+
+            ${blocoCupom(c)}
 
             <!-- O cliente que não sabe quanto custa o envio desiste no
                  carrinho. Enquanto a cotação estiver desligada no painel
@@ -379,6 +427,7 @@ const Carrinho = (() => {
     if (form) form.addEventListener('submit', ev => enviar(ev, c));
 
     ligarFrete(c);
+    ligarCupom();
 
     /* o link do WhatsApp é montado pelo app.js em toda página */
     if (typeof aplicarMarca === 'function') aplicarMarca();
@@ -390,6 +439,73 @@ const Carrinho = (() => {
      frete é cotado de novo. Guardar valor de frete velho é a receita
      para cobrar um preço que a transportadora não pratica mais.     */
   let freteEscolhido = null;
+
+  /* ---------------------- cupom, do lado da tela -------------------
+     desenhar() repinta o bloco inteiro. Sem guardar o que foi digitado
+     aqui fora, aplicar o cupom apagaria os dois campos na hora de
+     mostrar o resultado. */
+  let cupomAberto = false;
+  let cupomDigitado = { codigo: '', documento: '' };
+
+  /* Máscara só de exibição. Quem valida é o servidor, e ele aceita com
+     ou sem pontuação — isto existe para o campo ficar legível enquanto
+     se digita, não para filtrar. */
+  function mascaraDoc(v) {
+    const d = v.replace(/[^0-9A-Za-z]/g, '').toUpperCase().slice(0, 14);
+    if (d.length <= 11 && /^\d*$/.test(d)) {
+      return d.replace(/^(\d{3})(\d)/, '$1.$2')
+              .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+              .replace(/\.(\d{3})(\d{1,2})$/, '.$1-$2');
+    }
+    return d.replace(/^(.{2})(.)/, '$1.$2')
+            .replace(/^(.{2})\.(.{3})(.)/, '$1.$2.$3')
+            .replace(/^(.{2})\.(.{3})\.(.{3})(.)/, '$1.$2.$3/$4')
+            .replace(/(.{4})(\d{1,2})$/, '$1-$2');
+  }
+
+  function ligarCupom() {
+    const bloco = raiz.querySelector('[data-cupom]');
+    if (!bloco) return;
+
+    const campos = bloco.querySelector('.cupom__campos');
+    const cod    = bloco.querySelector('[data-cupom-codigo]');
+    const doc    = bloco.querySelector('[data-cupom-doc]');
+
+    bloco.querySelector('[data-cupom-abrir]')?.addEventListener('click', ev => {
+      cupomAberto = true;
+      campos.hidden = false;
+      ev.target.remove();
+      cod?.focus();
+    });
+
+    /* Guarda a cada tecla: o redesenho pode vir de outro lugar, como
+       mudar a quantidade de um item. */
+    cod?.addEventListener('input', () => { cupomDigitado.codigo = cod.value; });
+    doc?.addEventListener('input', () => {
+      doc.value = mascaraDoc(doc.value);
+      cupomDigitado.documento = doc.value;
+    });
+
+    const aplicar = async () => {
+      cupomDigitado = { codigo: cod.value.trim(), documento: doc.value.trim() };
+      if (!cupomDigitado.codigo) { cod.focus(); return; }
+      Carrinho.usarCupom(cupomDigitado);
+      await desenhar();
+    };
+
+    bloco.querySelector('[data-cupom-aplicar]')?.addEventListener('click', aplicar);
+    /* Enter no campo aplica. O bloco está dentro de um <form>? Não —
+       fica no resumo, então não há submit para atrapalhar. */
+    [cod, doc].forEach(i => i?.addEventListener('keydown', ev => {
+      if (ev.key === 'Enter') { ev.preventDefault(); aplicar(); }
+    }));
+
+    bloco.querySelector('[data-cupom-tirar]')?.addEventListener('click', async () => {
+      cupomDigitado = { codigo: '', documento: cupomDigitado.documento };
+      Carrinho.usarCupom(null);
+      await desenhar();
+    });
+  }
 
   function ligarFrete(c) {
     const bloco = raiz.querySelector('[data-cep-bloco]');
@@ -412,7 +528,7 @@ const Carrinho = (() => {
       const gratis = freteEscolhido && freteEscolhido.preco === 0;
       linha.textContent = !freteEscolhido ? (c.freteGratis ? 'Grátis' : 'A combinar')
                         : gratis ? 'Grátis' : reais(freteEscolhido.preco / 100);
-      totalEl.textContent = reais(c.total + (freteEscolhido ? freteEscolhido.preco / 100 : 0));
+      totalEl.textContent = reais(c.aPagar + (freteEscolhido ? freteEscolhido.preco / 100 : 0));
     };
 
     botao.addEventListener('click', async () => {
@@ -423,7 +539,7 @@ const Carrinho = (() => {
          pedido bate o valor e o estado, resolve aqui e não gasta
          consulta na conta.                                           */
       const uf = Preco.ufDoCep(cep);
-      if (uf && Preco.temFreteGratis(c.total, uf)) {
+      if (uf && Preco.temFreteGratis(c.aPagar, uf)) {
         freteEscolhido = { nome: 'Frete grátis', preco: 0, prazo: null };
         alvo.innerHTML = `<p class="cart__frete-gratis">Frete grátis para ${esc(uf)}: o seu pedido passou de ${reais(CONFIG.venda.freteGratis.valor)}.</p>`;
         pintar();
@@ -443,7 +559,7 @@ const Carrinho = (() => {
             comprimento: emb?.cm?.[0] || 30,
             largura: emb?.cm?.[1] || 20,
             altura: emb?.cm?.[2] || 10,
-            valor: c.total,
+            valor: c.aPagar,
           }),
         });
         const j = await r.json().catch(() => ({}));
@@ -505,7 +621,13 @@ const Carrinho = (() => {
     }
 
     const pedido = {
-      cliente: { nome, zap, email, cidade: (d.get('cidade') || '').toString().trim() },
+      cliente: {
+        nome, zap, email,
+        cidade: (d.get('cidade') || '').toString().trim(),
+        /* Vai cru e o painel decide o que guardar. Aqui ele não é
+           gravado em lugar nenhum: o carrinho não persiste documento. */
+        documento: cupomDigitado.documento || '',
+      },
       tipo: tipoDoPedido(c.linhas),
       itens: c.linhas.map(l => ({
         tipo: l.tipo, id: l.id ?? null, produto: l.nome, cor: l.cor || '',
@@ -516,6 +638,11 @@ const Carrinho = (() => {
       estampa: [...new Set(c.linhas.map(l => l.estampa).filter(Boolean))].join(' / '),
       embalagem: c.embalagem?.rotulo || '',
       total: Math.round(c.total * 100),
+      /* `total` continua sendo a soma das peças, sem desconto, porque é
+         dela que sai a margem no painel. O cupom viaja ao lado, e o
+         painel refaz a conta: o que a tela mostrou é orçamento. */
+      cupom: c.cupom?.codigo || '',
+      desconto: Math.round((c.desconto || 0) * 100),
       /* `total` continua sendo só as peças. O frete viaja separado
          porque no painel ele é outro campo e outra conta: item é custo,
          frete cobrado é receita.                                      */

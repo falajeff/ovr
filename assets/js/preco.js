@@ -115,7 +115,7 @@ const Preco = (() => {
      A faixa sai do TOTAL de peças do pedido, não do item, então o
      carrinho não pode ser somado item a item aqui. Quem fecha a conta
      é o servidor, numa chamada só.                                    */
-  async function consultarCarrinho(itens = []) {
+  async function consultarCarrinho(itens = [], cupom = null) {
     const corpo = itens.map(i => ({
       tipo: i.tipo, id: i.id ?? null, qtd: +i.qtd || 0,
       unitario: i.tipo === 'dtf' ? null : (+i.unitario || 0),
@@ -127,7 +127,14 @@ const Preco = (() => {
     const r = await fetch(`api/carrinho.php`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ itens: corpo }),
+      /* O cupom viaja como código e documento, nunca como valor. Quem
+         diz quanto vale é o servidor — mandar o desconto daqui seria
+         deixar o desconto editável no inspetor. */
+      body: JSON.stringify({
+        itens: corpo,
+        cupom: cupom?.codigo || '',
+        documento: cupom?.documento || '',
+      }),
     });
     if (!r.ok) throw new Error('carrinho indisponível');
     const d = await r.json();
@@ -137,6 +144,10 @@ const Preco = (() => {
       pecasDTF: d.pecasDTF,
       faixa: d.faixa,
       total: d.total,
+      cupom: d.cupom || null,
+      desconto: d.desconto || 0,
+      /* O que o frete grátis olha. Vem do servidor já descontado. */
+      aPagar: d.aPagar ?? d.total,
       freteGratis: d.freteGratis,
       minimoAtingido: d.minimoAtingido,
       faltamPecas: d.faltamPecas,

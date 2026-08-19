@@ -7,6 +7,8 @@
  * Devolve preço e subtotal. Nunca custo, nunca markup. */
 define('OVR_MOTOR', true);
 require __DIR__ . '/motor-preco.php';
+require __DIR__ . '/documento.php';
+require __DIR__ . '/cupons.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -46,11 +48,57 @@ foreach ($itens as $i) {
 $soma = round($soma, 2);
 $minimo = $cfg['venda']['pedidoMinimo'] ?? 1;
 
+/* ------------------------------------------------------------------
+   Cupom
+
+   O navegador manda o código e o documento; recebe o valor pronto.
+   Nenhum percentual, nenhum teto e nenhuma regra descem para a tela —
+   é a mesma linha que o preço passou a respeitar.
+
+   O que NÃO se decide aqui é se a pessoa já comprou antes. Isso é o
+   painel que sabe, porque é lá que os pedidos moram, e ele reconfere
+   tudo quando o pedido chega. O número desta tela é orçamento: na OVR
+   quem fecha a venda é gente, não o site.                            */
+$cupom = null;
+$desconto = 0.0;
+if (($corpo['cupom'] ?? '') !== '') {
+    $regra = ovr_cupom((string) $corpo['cupom']);
+    $doc   = ovr_documento_normalizar($corpo['documento'] ?? null);
+
+    if (!$regra) {
+        $cupom = ['erro' => 'Não encontrei esse cupom. Confira o código.'];
+    } elseif (!empty($regra['primeiraCompra']) && !$doc) {
+        $cupom = ['erro' => trim((string) ($corpo['documento'] ?? '')) === ''
+            ? 'Informe o CPF ou CNPJ para usar este cupom.'
+            : 'Esse CPF ou CNPJ não existe. Confira os números.'];
+    } elseif ($soma < ($regra['minimo'] ?? 0)) {
+        $cupom = ['erro' => 'Este cupom vale a partir de R$ ' . number_format($regra['minimo'], 2, ',', '.') . '.'];
+    } else {
+        $desconto = ovr_cupom_desconto($regra, $soma);
+        $cupom = [
+            'codigo'     => $regra['codigo'],
+            'rotulo'     => $regra['rotulo'],
+            'percentual' => $regra['percentual'],
+            'desconto'   => $desconto,
+            /* Bate no teto: dizer isso evita a pergunta "por que não deu
+               dez por cento?", que chegaria no WhatsApp de outro jeito. */
+            'noTeto'     => $desconto < round($soma * $regra['percentual'] / 100, 2),
+        ];
+    }
+}
+$totalComDesconto = round($soma - $desconto, 2);
+
 echo json_encode([
     'linhas' => $linhas,
     'pecasDTF' => $totalPecas,
     'faixa' => $totalPecas ? ['rotulo' => $faixa['rotulo'], 'min' => $faixa['min'], 'max' => $faixa['max']] : null,
     'total' => $soma,
+    'cupom' => $cupom,
+    'desconto' => $desconto,
+    /* O frete grátis olha para este número, não para $soma: o desconto
+       entra antes do frete. Um pedido de R$ 1.550 cai para R$ 1.395 e
+       perde a faixa dos R$ 1.500 — o carrinho avisa quando acontece. */
+    'aPagar' => $totalComDesconto,
     'freteGratis' => false,
     'minimoAtingido' => $totalPecas === 0 || $totalPecas >= $minimo,
     'faltamPecas' => max(0, $minimo - $totalPecas),

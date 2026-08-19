@@ -173,6 +173,12 @@ function ovr_receber_pedido(WP_REST_Request $req) {
         '_ovr_origem_site'    => 1,     // marca que o valor veio calculado de fora
         '_ovr_ip'             => $ip,
     ];
+
+    /* Cupom e documento. Entra depois do resto porque precisa do
+       $post_id: a checagem de "já comprou" tem que ignorar o pedido que
+       está nascendo agora, senão ele se encontraria e todo pedido seria
+       repetido. O CPF em si não é gravado — só o hash. */
+    $meta += ovr_meta_do_cupom($dados, $post_id);
     foreach ($meta as $k => $v) update_post_meta($post_id, $k, $v);
 
     /* Frete do fornecedor pela quantidade. Precisa vir DEPOIS do laço, que é

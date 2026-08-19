@@ -650,13 +650,27 @@ ul, ol { list-style: none; }
   display: flex; flex-direction: column; gap: 10px; order: 2;
 }
 .cart__form { display: flex; flex-direction: column; gap: 14px; order: 1; }
-.cart__form .campo > span {
+/* O resumo entra junto: o bloco de CEP e o de cupom moram nele e usam
+   o mesmo rótulo do formulário. Sem isto, dois campos da mesma tela
+   ficam com dois estilos de rótulo.
+
+   `:first-child` não é capricho. Dentro de .campo há um segundo span,
+   o .cupom__linha (e o .cep__linha), que embrulha input e botão. Sem a
+   trava, o input herdava 12px de Space Grotesk em caixa alta e o campo
+   de CPF ficava ilegível. */
+.cart__form .campo > span:first-child,
+.cart__resumo .campo > span:first-child {
   font-family: var(--fonte-titulo); font-weight: 700; font-size: 12px;
   letter-spacing: 0.08em; text-transform: uppercase;
 }
-.cart__form .campo > span em { font-family: var(--fonte-corpo); font-weight: 400; letter-spacing: 0; text-transform: none; }
+.cart__form .campo > span:first-child em,
+.cart__resumo .campo > span:first-child em { font-family: var(--fonte-corpo); font-weight: 400; letter-spacing: 0; text-transform: none; }
+/* O resumo entra na mesma regra. O bloco de CEP ficava com o input
+   cru do navegador desde sempre; passava despercebido porque a cotação
+   está desligada e ele não aparece. */
 .cart__form input[type="text"], .cart__form input:not([type]), .cart__form input[type="email"],
-.cart__form input[type="file"], .cart__form textarea {
+.cart__form input[type="file"], .cart__form textarea,
+.cart__resumo input[type="text"], .cart__resumo input:not([type]) {
   width: 100%; padding: 11px 12px; border: 1px solid var(--fio); background: #fff; font: inherit;
 }
 .cart__form textarea { resize: vertical; min-height: 76px; }
@@ -694,6 +708,38 @@ ul, ol { list-style: none; }
   font-size: 13px; line-height: 1.5;
 }
 .cart__semarte a { text-decoration: underline; text-underline-offset: 2px; font-weight: 500; }
+
+/* ------------------------ cupom -------------------------------- */
+.cupom { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--fio); }
+
+/* Sem caixa e sem cor: quem não tem cupom não deve ser convidado a
+   procurar um. Botão de aparência discreta abre os campos.          */
+.cupom__abrir {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  font: inherit; font-size: 13px; color: var(--texto-fraco);
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.cupom__abrir:hover { color: var(--texto); }
+
+.cupom__campos { display: grid; gap: 12px; }
+.cupom__linha { display: flex; gap: 8px; }
+/* Mesmo `min-width: 0` do CEP, e pelo mesmo motivo. */
+.cupom__linha input { flex: 1; min-width: 0; text-transform: uppercase; }
+.cupom__linha .btn { flex: none; white-space: nowrap; }
+
+.cupom__aviso { font-size: 13px; line-height: 1.45; margin: 0; }
+.cupom__aviso--erro { color: var(--alerta); }
+.cupom__aviso--ok { color: #1c7a3d; }
+.cupom__tirar {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  font: inherit; font-size: 13px; color: var(--texto-fraco);
+  text-decoration: underline; text-underline-offset: 3px;
+}
+
+/* O desconto é a única linha do resumo que não é preto. Ela precisa
+   ler como abatimento à primeira vista, senão vira mais um número. */
+.resumo__desconto { color: #1c7a3d; }
+.resumo__desconto strong { color: #1c7a3d; }
 
 /* ------------------------ cotação de frete --------------------- */
 .cart__cep { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--fio); }

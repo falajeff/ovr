@@ -131,6 +131,7 @@ function ovr_situacoes_arte() {
 require_once OVR_PAINEL_DIR . 'inc/pedidos.php';
 require_once OVR_PAINEL_DIR . 'inc/painel.php';
 require_once OVR_PAINEL_DIR . 'inc/financeiro.php';
+require_once OVR_PAINEL_DIR . 'inc/cupom.php';
 require_once OVR_PAINEL_DIR . 'inc/receber.php';
 /* Depois de receber.php: frete.php usa ovr_origens_permitidas(),
    ovr_erro() e ovr_ip_do_visitante(), que nascem lá.                 */
