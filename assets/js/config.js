@@ -101,7 +101,11 @@ const CONFIG = {
        em cor chapada o DTF sai mais barato. Nada no site lê isto.    */
     limitePecas: 9,
     prazoDias: 7,
-    etiqueta: { custo: 2.00, rotulo: 'Etiqueta termocolante com a sua marca' },
+    /* Este bloco já teve um campo de custo, que ninguém lia. Ao lado do
+       preço de venda em dados/precos.json ele entregava o markup por
+       divisão. Foi para ferramentas/notas-privadas.md — e o número não
+       volta para cá nem dentro de comentário. */
+    etiqueta: { rotulo: 'Etiqueta termocolante com a sua marca' },
     /* custo da peça pronta com estampa frente até 35x40 */
     modelagens: [
       { id: 'oversized-classica', nome: 'Oversized Clássica', cores: 7,  img: 'oversized-classica.webp' },
