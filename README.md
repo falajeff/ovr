@@ -1,6 +1,8 @@
 # OVR
 
-Loja de camisetas personalizadas que eu toco em Marília, São Paulo, e o sistema inteiro que a faz funcionar: a vitrine, o painel que administra os pedidos, o blog e as ferramentas que montam o catálogo.
+Sistema completo de uma loja de camisetas personalizadas em Marília, São Paulo: a vitrine, o painel que administra os pedidos, o blog e as ferramentas que montam o catálogo.
+
+Product design e desenvolvimento por Jefferson Lopes.
 
 Não é exercício. O site recebe pedido de verdade e o painel é onde eles são tocados, então cada decisão aqui foi tomada com a operação rodando.
 
