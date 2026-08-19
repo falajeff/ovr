@@ -35,6 +35,7 @@ function ovr_gestao_telas() {
         'clientes'   => 'Clientes',
         'compras'    => 'Compras',
         'financeiro' => 'Financeiro',
+        'cupons'     => 'Cupons',
         'frete'      => 'Frete',
     ];
 }
@@ -139,6 +140,7 @@ add_action('template_redirect', function () {
         case 'pedidos':    ovr_g_tela_pedidos();    break;
         case 'pedido':     ovr_g_tela_pedido();     break;
         case 'financeiro': ovr_g_tela_financeiro(); break;
+        case 'cupons':     ovr_g_tela_cupons();     break;
         case 'frete':      ovr_g_tela_frete();      break;
         default:           ovr_g_tela_resumo();
     }
@@ -1255,6 +1257,21 @@ a{color:inherit}
 /* Selo do cupom. Mesma caixinha do aviso de custo, em duas cores: verde
    quando a pessoa tinha direito, vermelho quando não tinha. Sem
    margem-left porque ele entra numa linha própria, abaixo do nome. */
+/* Formulário de cupom. Duas colunas no desktop e uma no celular: são
+   seis campos curtos, e um por linha faria rolar sem motivo. */
+.g-cupom-form{margin-bottom:8px}
+.g-cupom-form__grade{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}
+.g-cupom-form__check{display:flex;align-items:flex-start;gap:9px;font-size:14px;line-height:1.45;margin-top:6px}
+.g-cupom-form__check em{color:#6b6b66;font-style:normal}
+.g-cupom-form__acoes{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px;padding-top:18px;border-top:1px solid #e6e3db}
+/* Apagar é vermelho só na borda e no texto: botão vermelho cheio ao lado
+   do volt puxa o clique para a ação destrutiva. */
+.g-cupom-form__apagar{margin-left:auto;border-color:#e0b4b4;color:#9b1c1c}
+.g-cupom-form__apagar:hover{border-color:#9b1c1c;background:#fde8e8}
+.g-cupom-chave{word-break:break-all;font-size:13px}
+.g-cupom-chave code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#3a3d43}
+@media(max-width:700px){.g-cupom-form__grade{grid-template-columns:1fr}
+  .g-cupom-form__apagar{margin-left:0}}
 .g-cupom{display:inline-block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;margin-top:3px;white-space:nowrap}
 .g-cupom--ok{background:#e3f5e8;color:#0a5c28}
 .g-cupom--alerta{background:#fde8e8;color:#9b1c1c}
@@ -1303,4 +1320,179 @@ a{color:inherit}
   .g-dir{text-align:right}
 }
 CSS;
+}
+
+/* ------------------------------------------------------------------
+   Tela de cupons
+
+   Tudo numa página: a lista e o formulário. São poucos cupons e cada um
+   cabe numa linha — separar em "listar" e "editar" custaria dois cliques
+   para mudar um percentual.
+------------------------------------------------------------------ */
+function ovr_g_tela_cupons() {
+    if (!current_user_can('edit_pedidos')) { echo '<p>Sem permissão.</p>'; return; }
+
+    $aviso = ovr_g_cupons_salvar();
+    $lista = ovr_cupons_salvos();
+    $edita = isset($_GET['editar']) ? ovr_cupom_por_codigo(sanitize_text_field(wp_unslash($_GET['editar']))) : null;
+
+    echo '<h1 class="g-h1">Cupons</h1>';
+    echo '<p class="g-lead">O desconto é calculado aqui e o site só recebe o valor pronto. '
+       . 'Mudar um percentual vale na hora, sem subir arquivo.</p>';
+
+    if ($aviso) printf('<div class="g-nota g-nota--%s">%s</div>', esc_attr($aviso[0]), esc_html($aviso[1]));
+
+    /* ---- lista ---- */
+    if ($lista) {
+        echo '<div class="g-tabela"><table><thead><tr>'
+           . '<th>Código</th><th>O que é</th><th class="g-dir">Desconto</th><th class="g-dir">Teto</th>'
+           . '<th class="g-dir">Mínimo</th><th>Só 1ª compra</th><th>Vale até</th><th>Situação</th><th></th>'
+           . '</tr></thead><tbody>';
+        foreach ($lista as $c) {
+            $vigente = ovr_cupom_vigente($c);
+            printf('<tr>
+                      <td data-rot="Código"><strong>%s</strong></td>
+                      <td data-rot="O que é">%s</td>
+                      <td data-rot="Desconto" class="g-dir g-num">%d%%</td>
+                      <td data-rot="Teto" class="g-dir g-num">%s</td>
+                      <td data-rot="Mínimo" class="g-dir g-num">%s</td>
+                      <td data-rot="Só 1ª compra">%s</td>
+                      <td data-rot="Vale até">%s</td>
+                      <td data-rot="Situação"><span class="g-cupom g-cupom--%s">%s</span></td>
+                      <td><a class="g-link" href="%s">editar</a></td>
+                    </tr>',
+                esc_html($c['codigo']), esc_html($c['rotulo']), (int) $c['percentual'],
+                esc_html(((int) $c['teto']) > 0 ? ovr_reais((int) $c['teto']) : 'sem teto'),
+                esc_html(((int) $c['minimo']) > 0 ? ovr_reais((int) $c['minimo']) : '—'),
+                empty($c['primeiraCompra']) ? 'não' : 'sim',
+                esc_html($c['ate'] ?: 'sem prazo'),
+                $vigente ? 'ok' : 'alerta',
+                $vigente ? 'no ar' : (empty($c['ativo']) ? 'desligado' : 'vencido'),
+                esc_url(ovr_g_url('cupons', ['editar' => $c['codigo']])));
+        }
+        echo '</tbody></table></div>';
+    } else {
+        echo '<div class="g-vazio"><p>Nenhum cupom ainda. Crie o primeiro abaixo.</p></div>';
+    }
+
+    /* ---- formulário ---- */
+    $v = fn($k, $p = '') => esc_attr($edita[$k] ?? $p);
+    $reais = fn($k) => $edita && (int) ($edita[$k] ?? 0) > 0
+        ? esc_attr(number_format(((int) $edita[$k]) / 100, 2, ',', '')) : '';
+
+    $campo = function ($id, $rotulo, $html, $dica = '') {
+        echo '<div class="g-grupo">';
+        printf('<label class="g-rot" for="%s">%s</label>', esc_attr($id), esc_html($rotulo));
+        echo $html;
+        if ($dica) printf('<p class="g-dica">%s</p>', esc_html($dica));
+        echo '</div>';
+    };
+
+    printf('<h2 class="g-h2" style="margin-top:40px">%s</h2>',
+        $edita ? 'Editar ' . esc_html($edita['codigo']) : 'Novo cupom');
+    printf('<form class="g-bloco g-cupom-form" method="post" action="%s">', esc_url(ovr_g_url('cupons')));
+    wp_nonce_field('ovr_cupom');
+    if ($edita) printf('<input type="hidden" name="original" value="%s">', esc_attr($edita['codigo']));
+
+    echo '<div class="g-cupom-form__grade">';
+    $campo('cp_codigo', 'Código',
+        sprintf('<input class="g-campo" id="cp_codigo" name="codigo" value="%s" required placeholder="PRIMEIRA10" style="text-transform:uppercase">', $v('codigo')),
+        'É o que o cliente digita. Só letras e números.');
+    $campo('cp_rotulo', 'O que é',
+        sprintf('<input class="g-campo" id="cp_rotulo" name="rotulo" value="%s" required placeholder="Primeira compra">', $v('rotulo')),
+        'Aparece no carrinho, na linha do desconto.');
+    $campo('cp_pct', 'Desconto (%)',
+        sprintf('<input class="g-campo" id="cp_pct" name="percentual" type="number" min="1" max="90" value="%s" required>', $v('percentual', '10')));
+    $campo('cp_teto', 'Teto em reais',
+        sprintf('<input class="g-campo" id="cp_teto" name="teto" inputmode="decimal" value="%s" placeholder="150,00">', $reais('teto')),
+        'Em branco = sem teto. Sem ele, pedido grande leva o desconto cheio.');
+    $campo('cp_min', 'Pedido mínimo',
+        sprintf('<input class="g-campo" id="cp_min" name="minimo" inputmode="decimal" value="%s" placeholder="0,00">', $reais('minimo')),
+        'Em branco = vale para qualquer valor.');
+    $campo('cp_ate', 'Vale até',
+        sprintf('<input class="g-campo" id="cp_ate" name="ate" type="date" value="%s">', $v('ate')),
+        'Em branco = sem prazo.');
+    echo '</div>';
+
+    printf('<label class="g-cupom-form__check"><input type="checkbox" name="primeiraCompra" value="1"%s> '
+         . '<span>Só na primeira compra <em>(conferido pelo CPF ou CNPJ do pedido)</em></span></label>',
+        checked(!$edita || !empty($edita['primeiraCompra']), true, false));
+    printf('<label class="g-cupom-form__check"><input type="checkbox" name="ativo" value="1"%s> '
+         . '<span>Ligado</span></label>',
+        checked(!$edita || !empty($edita['ativo']), true, false));
+
+    echo '<div class="g-cupom-form__acoes">';
+    printf('<button class="g-btn g-btn--volt" type="submit" name="acao" value="salvar">%s</button>',
+        $edita ? 'Salvar' : 'Criar cupom');
+    if ($edita) {
+        printf('<a class="g-btn g-btn--linha" href="%s">Cancelar</a>', esc_url(ovr_g_url('cupons')));
+        printf('<button class="g-btn g-btn--linha g-cupom-form__apagar" type="submit" name="acao" value="apagar" '
+             . 'onclick="return confirm(\'Apagar o cupom %s? Quem já usou não é afetado.\')">Apagar</button>',
+            esc_js($edita['codigo']));
+    }
+    echo '</div></form>';
+
+    /* ---- a chave ---- */
+    echo '<h2 class="g-h2" style="margin-top:48px">Chave do site</h2>';
+    echo '<p class="g-lead">O site usa esta chave para perguntar o desconto. Ela vive em '
+       . '<code>api/painel-chave.php</code>, no servidor do site. Só precisa mexer se o cupom '
+       . 'parar de funcionar por completo.</p>';
+    printf('<div class="g-bloco g-cupom-chave"><code>%s</code></div>', esc_html(ovr_cupom_chave()));
+}
+
+
+/* Grava, apaga, e devolve o aviso. Fora da tela para o desenho não ficar
+   embolado com a regra. */
+function ovr_g_cupons_salvar(): ?array {
+    if (empty($_POST['acao'])) return null;
+    /* Nonce próprio, e não check_admin_referer: aquele mata a página com
+       wp_die quando falha, e aqui um POST velho merece um aviso, não uma
+       tela branca. */
+    if (!wp_verify_nonce($_POST['_wpnonce'] ?? '', 'ovr_cupom')) {
+        return ['erro', 'A página expirou. Recarregue e tente de novo.'];
+    }
+    $acao   = sanitize_text_field(wp_unslash($_POST['acao']));
+    $codigo = strtoupper(preg_replace('/[^A-Z0-9]/i', '', sanitize_text_field(wp_unslash($_POST['codigo'] ?? ''))));
+    $orig   = strtoupper(sanitize_text_field(wp_unslash($_POST['original'] ?? '')));
+    $lista  = ovr_cupons_salvos();
+
+    if ($acao === 'apagar' && $orig) {
+        $lista = array_filter($lista, fn($c) => ($c['codigo'] ?? '') !== $orig);
+        ovr_cupons_gravar($lista);
+        return ['ok', 'Cupom ' . $orig . ' apagado. Quem já usou não foi afetado.'];
+    }
+    if ($acao !== 'salvar') return null;
+    if ($codigo === '') return ['erro', 'O código não pode ficar vazio.'];
+
+    /* Centavos, sempre. Aceita "150,00" e "150.00". */
+    $centavos = function ($v) {
+        $v = trim(str_replace(['.', ' '], '', (string) $v));
+        $v = str_replace(',', '.', $v);
+        return $v === '' ? 0 : (int) round(((float) $v) * 100);
+    };
+
+    $novo = [
+        'codigo'         => $codigo,
+        'rotulo'         => sanitize_text_field(wp_unslash($_POST['rotulo'] ?? '')) ?: $codigo,
+        'percentual'     => max(1, min(90, (int) ($_POST['percentual'] ?? 10))),
+        'teto'           => max(0, $centavos($_POST['teto'] ?? '')),
+        'minimo'         => max(0, $centavos($_POST['minimo'] ?? '')),
+        'primeiraCompra' => !empty($_POST['primeiraCompra']),
+        'ate'            => preg_match('/^\d{4}-\d{2}-\d{2}$/', $_POST['ate'] ?? '') ? $_POST['ate'] : '',
+        'ativo'          => !empty($_POST['ativo']),
+    ];
+
+    /* Trocar o código de um cupom existente é renomear, não duplicar. */
+    $achou = false;
+    foreach ($lista as $i => $c) {
+        if (($c['codigo'] ?? '') === ($orig ?: $codigo)) { $lista[$i] = $novo; $achou = true; break; }
+    }
+    if (!$achou) {
+        foreach ($lista as $c) {
+            if (($c['codigo'] ?? '') === $codigo) return ['erro', 'Já existe um cupom com o código ' . $codigo . '.'];
+        }
+        $lista[] = $novo;
+    }
+    ovr_cupons_gravar($lista);
+    return ['ok', 'Cupom ' . $codigo . ' salvo. Já vale no site.'];
 }

@@ -158,3 +158,138 @@ function ovr_cupom_recado(string $st): string {
         'sem-doc'  => 'ATENÇÃO: cupom usado sem CPF/CNPJ válido',
     ][$st] ?? '';
 }
+
+/* ==================================================================
+   O painel passa a ser o DONO dos cupons
+
+   Antes as regras moravam em api/cupons.php, no site, e mexer num
+   percentual exigia subir arquivo. Agora moram aqui, editáveis em
+   /gestao, e o site pergunta quando alguém digita um código.
+
+   A pergunta só acontece nesse momento, que é raro, então a chamada
+   entre servidores não pesa na vitrine.
+
+   O que o site recebe é o VALOR do desconto, nunca a regra: percentual
+   e teto não saem daqui. Um teto que vaza vira alvo — a pessoa monta o
+   pedido exatamente no ponto em que o desconto rende mais.
+   ================================================================== */
+
+/* Dinheiro em centavos, como o resto do painel. Float de dinheiro é
+   como o sistema descobre tarde que R$ 0,01 sumiu. */
+function ovr_cupons_padrao(): array {
+    return [[
+        'codigo'         => 'PRIMEIRA10',
+        'rotulo'         => 'Primeira compra',
+        'percentual'     => 10,
+        'teto'           => 15000,
+        'minimo'         => 0,
+        'primeiraCompra' => true,
+        'ate'            => '',
+        'ativo'          => true,
+    ]];
+}
+
+function ovr_cupons_salvos(): array {
+    $c = get_option('ovr_cupons', null);
+    if ($c === null) {
+        /* Primeira vez: nasce com o cupom que já estava no site, para a
+           troca não desligar a promoção que está no ar. */
+        $c = ovr_cupons_padrao();
+        add_option('ovr_cupons', $c, '', 'no');
+    }
+    return is_array($c) ? $c : [];
+}
+
+function ovr_cupons_gravar(array $lista): void {
+    update_option('ovr_cupons', array_values($lista), 'no');
+}
+
+function ovr_cupom_por_codigo(string $codigo): ?array {
+    $c = strtoupper(preg_replace('/\s+/', '', $codigo));
+    foreach (ovr_cupons_salvos() as $cupom) {
+        if (($cupom['codigo'] ?? '') === $c) return $cupom;
+    }
+    return null;
+}
+
+/* Um cupom pode existir e mesmo assim não valer agora. */
+function ovr_cupom_vigente(array $c): bool {
+    if (empty($c['ativo'])) return false;
+    if (!empty($c['ate']) && current_time('Y-m-d') > $c['ate']) return false;
+    return true;
+}
+
+/* Quanto sai do total, em centavos. Nunca mais que o teto, nunca mais
+   que o próprio total — desconto maior que a compra viraria crédito, e
+   a loja não tem isso. */
+function ovr_cupom_valor(array $c, int $totalCentavos): int {
+    if ($totalCentavos < (int) ($c['minimo'] ?? 0)) return 0;
+    $bruto = (int) floor($totalCentavos * ((int) $c['percentual']) / 100);
+    $teto  = (int) ($c['teto'] ?? 0);
+    if ($teto > 0) $bruto = min($bruto, $teto);
+    return max(0, min($bruto, $totalCentavos));
+}
+
+/* ------------------------------------------------------------------
+   A chave que o site usa para perguntar
+
+   Nasce sozinha e é mostrada na tela de Cupons para você colar no
+   arquivo privado do site. Não é segredo de vida ou morte — o endpoint
+   só devolve o desconto de um código que o cliente digitou — mas sem
+   ela qualquer um enumeraria códigos e descobriria o teto por
+   tentativa.                                                          */
+function ovr_cupom_chave(): string {
+    $k = get_option('ovr_cupom_chave');
+    if (!$k) { $k = bin2hex(random_bytes(24)); add_option('ovr_cupom_chave', $k, '', 'no'); }
+    return $k;
+}
+
+add_action('rest_api_init', function () {
+    register_rest_route('ovr/v1', '/cupom', [
+        'methods'             => 'POST',
+        'callback'            => 'ovr_rest_cupom',
+        'permission_callback' => '__return_true',   // a chave é conferida dentro
+    ]);
+});
+
+function ovr_rest_cupom(WP_REST_Request $req) {
+    /* Rota de valor: nunca pode ser cacheada, pelo mesmo motivo das
+       rotas de conta. */
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0, private');
+    header('X-LiteSpeed-Cache-Control: no-cache, no-store');
+    if (!defined('DONOTCACHEPAGE')) define('DONOTCACHEPAGE', true);
+
+    $d = $req->get_json_params() ?: [];
+
+    /* hash_equals e não ===: comparação de string vaza o tamanho do
+       prefixo certo pelo tempo que leva. */
+    if (!hash_equals(ovr_cupom_chave(), (string) ($d['chave'] ?? ''))) {
+        return ovr_erro('ovr_chave', 'Não autorizado.', 403);
+    }
+
+    $total = max(0, (int) ($d['total'] ?? 0));
+    $cupom = ovr_cupom_por_codigo((string) ($d['codigo'] ?? ''));
+
+    if (!$cupom || !ovr_cupom_vigente($cupom)) {
+        return ['ok' => false, 'erro' => 'Não encontrei esse cupom. Confira o código.'];
+    }
+    if ($total < (int) ($cupom['minimo'] ?? 0)) {
+        return ['ok' => false, 'erro' => 'Este cupom vale a partir de R$ '
+            . number_format(((int) $cupom['minimo']) / 100, 2, ',', '.') . '.'];
+    }
+
+    /* A checagem de primeira compra é do site, que tem o documento na
+       mão. Aqui só dizemos que o cupom exige. */
+    $desconto = ovr_cupom_valor($cupom, $total);
+    $cheio    = (int) floor($total * ((int) $cupom['percentual']) / 100);
+
+    return [
+        'ok'             => true,
+        'codigo'         => $cupom['codigo'],
+        'rotulo'         => $cupom['rotulo'],
+        'percentual'     => (int) $cupom['percentual'],
+        'primeiraCompra' => !empty($cupom['primeiraCompra']),
+        'desconto'       => $desconto,
+        'noTeto'         => $desconto < $cheio,
+    ];
+}

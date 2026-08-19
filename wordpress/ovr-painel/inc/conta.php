@@ -391,13 +391,21 @@ function ovr_conta_nova_senha(WP_REST_Request $req) {
    ficam só o texto e o destino de cada um.                            */
 
 function ovr_conta_email_bemvindo(WP_User $u) {
-    $cupom = function_exists('ovr_cupom') ? ovr_cupom('PRIMEIRA10') : null;
-    /* Se o cupom estiver desligado no site, o e-mail sai sem a caixa em
-       vez de prometer um desconto que o carrinho vai recusar. */
+    /* Pega o cupom de boas-vindas de verdade, e não um código fixo: se
+       você renomear ou desligar em /gestao, o e-mail acompanha. Sem
+       nenhum vigente, ele sai sem a caixa, em vez de prometer um
+       desconto que o carrinho vai recusar. */
+    $cupom = null;
+    foreach (ovr_cupons_salvos() as $c) {
+        if (!empty($c['primeiraCompra']) && ovr_cupom_vigente($c)) { $cupom = $c; break; }
+    }
+
+    $teto = (int) ($cupom['teto'] ?? 0);
     $caixa = $cupom ? ovr_email_caixa(
         'Seu cupom de boas-vindas',
-        sprintf("%d%% de desconto na primeira compra, até %s.\nÉ só digitar no carrinho, antes de enviar.",
-                $cupom['percentual'], 'R$ ' . number_format($cupom['teto'], 2, ',', '.')),
+        sprintf("%d%% de desconto na primeira compra%s.\nÉ só digitar no carrinho, antes de enviar.",
+                (int) $cupom['percentual'],
+                $teto > 0 ? ', até R$ ' . number_format($teto / 100, 2, ',', '.') : ''),
         $cupom['codigo']
     ) : '';
 

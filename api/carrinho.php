@@ -89,27 +89,30 @@ $minimo = $cfg['venda']['pedidoMinimo'] ?? 1;
 $cupom = null;
 $desconto = 0.0;
 if (($corpo['cupom'] ?? '') !== '') {
-    $regra = ovr_cupom((string) $corpo['cupom']);
-    $doc   = ovr_documento_normalizar($corpo['documento'] ?? null);
+    $doc = ovr_documento_normalizar($corpo['documento'] ?? null);
+    $r   = ovr_cupom_consultar((string) $corpo['cupom'], $soma);
 
-    if (!$regra) {
-        $cupom = ['erro' => 'Não encontrei esse cupom. Confira o código.'];
-    } elseif (!empty($regra['primeiraCompra']) && !$doc) {
+    if (isset($r['erro'])) {
+        $cupom = ['erro' => $r['erro']];
+    } elseif (!empty($r['primeiraCompra']) && !$doc) {
+        /* O documento é conferido AQUI e não no painel: é este servidor
+           que recebe o que a pessoa digitou. O painel só diz que o cupom
+           exige primeira compra. */
         $cupom = ['erro' => trim((string) ($corpo['documento'] ?? '')) === ''
             ? 'Informe o CPF ou CNPJ para usar este cupom.'
             : 'Esse CPF ou CNPJ não existe. Confira os números.'];
-    } elseif ($soma < ($regra['minimo'] ?? 0)) {
-        $cupom = ['erro' => 'Este cupom vale a partir de R$ ' . number_format($regra['minimo'], 2, ',', '.') . '.'];
+    } elseif ($r['desconto'] <= 0) {
+        $cupom = ['erro' => 'Este cupom não vale para este pedido.'];
     } else {
-        $desconto = ovr_cupom_desconto($regra, $soma);
+        $desconto = $r['desconto'];
         $cupom = [
-            'codigo'     => $regra['codigo'],
-            'rotulo'     => $regra['rotulo'],
-            'percentual' => $regra['percentual'],
+            'codigo'     => $r['codigo'],
+            'rotulo'     => $r['rotulo'],
+            'percentual' => $r['percentual'],
             'desconto'   => $desconto,
             /* Bate no teto: dizer isso evita a pergunta "por que não deu
                dez por cento?", que chegaria no WhatsApp de outro jeito. */
-            'noTeto'     => $desconto < round($soma * $regra['percentual'] / 100, 2),
+            'noTeto'     => $r['noTeto'],
         ];
     }
 }
