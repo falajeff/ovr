@@ -17,6 +17,20 @@ $corpo = json_decode(file_get_contents('php://input'), true);
 $itens = is_array($corpo['itens'] ?? null) ? $corpo['itens'] : [];
 if (count($itens) > 200) { http_response_code(413); echo json_encode(['erro' => 'carrinho grande demais']); exit; }
 
+/* Teto de segurança por tipo de linha, em reais por unidade. Não é a
+   tabela de preço: é o limite do que faz sentido, para um valor forjado
+   não passar. Os números saem do que cada página realmente cobra, com
+   folga larga para não barrar venda legítima. */
+const OVR_QTD_MAX_ITEM = 10000;
+
+function ovr_teto_por_tipo(string $tipo): float {
+    return [
+        'filme' => 20000.0,   // rolo grande de filme
+        'arte'  => 5000.0,    // ilustração autoral cara
+        'dtg'   => 1000.0,    // peça DTG mais cara com estampa grande
+    ][$tipo] ?? 2000.0;
+}
+
 $cfg = ovr_cfg();
 $totalPecas = 0;
 foreach ($itens as $i) if (($i['tipo'] ?? '') === 'dtf') $totalPecas += max(0, (int) ($i['qtd'] ?? 0));
@@ -24,7 +38,9 @@ foreach ($itens as $i) if (($i['tipo'] ?? '') === 'dtf') $totalPecas += max(0, (
 $faixa = ovr_faixa_de(max(1, $totalPecas));
 $linhas = []; $soma = 0.0;
 foreach ($itens as $i) {
-    $qtd = max(0, (int) ($i['qtd'] ?? 0));
+    /* Teto de quantidade. Sem ele, 99.999.999 peças fechavam um pedido de
+       sete bilhões de reais — número que não é venda, é lixo no painel. */
+    $qtd = min(max(0, (int) ($i['qtd'] ?? 0)), OVR_QTD_MAX_ITEM);
     $unit = 0.0;
     if (($i['tipo'] ?? '') === 'dtf') {
         $produto = ovr_produto((int) ($i['id'] ?? 0));
@@ -38,8 +54,19 @@ foreach ($itens as $i) {
             $unit = ovr_unitario($produto, max(1, $totalPecas), $pos);
         }
     } else {
-        /* filme e arte chegam com o preço já fechado da página deles */
-        $unit = round((float) ($i['unitario'] ?? 0), 2);
+        /* Filme, arte e DTG chegam com o preço já fechado da página deles,
+           porque cada uma tem uma conta própria que não é a da peça.
+
+           Mas o navegador NÃO pode ser autoridade sobre o número. Mandando
+           `unitario` negativo dava para abater o total de um pedido real:
+           dez camisetas mais uma linha de filme a -700 fechava perto de
+           zero. O pedido é orçamento e quem fecha é gente, mas o valor que
+           chega no painel é o que você usa para cotar.
+
+           Duas travas, e nenhuma delas tenta refazer a conta da página:
+           preço nunca é negativo, e nunca passa do teto por tipo.        */
+        $unit = max(0.0, round((float) ($i['unitario'] ?? 0), 2));
+        $unit = min($unit, ovr_teto_por_tipo($i['tipo'] ?? ''));
     }
     $sub = round($unit * $qtd, 2);
     $linhas[] = ['unitario' => $unit, 'subtotal' => $sub];

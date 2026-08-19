@@ -26,3 +26,7 @@ node_modules/
 # mundo exatamente o que saiu do navegador.
 api/preco-config.php
 api/catalogo-custo.php
+
+# Notas privadas: nomes de fornecedor e conta de margem que saíram do
+# config.js. Bloqueadas pela web junto com o resto de ferramentas/.
+ferramentas/notas-privadas.md

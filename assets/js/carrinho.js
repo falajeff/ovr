@@ -446,8 +446,7 @@ const Carrinho = (() => {
               <input name="email" type="email" required autocomplete="email"></label>
             <p class="t-meta" style="margin-top:-8px">A confirmação do pedido e o botão para agilizar pelo WhatsApp chegam neste e-mail.</p>
             <label class="campo"><span>CPF ou CNPJ</span>
-              <input name="documento" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" required>
-              <em class="t-meta">Vai na nota fiscal. É também o que identifica a primeira compra.</em></label>
+              <input name="documento" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" required></label>
             <label class="campo"><span>Cidade / UF</span>
               <input name="cidade" autocomplete="address-level2"></label>
 
@@ -742,7 +741,7 @@ const Carrinho = (() => {
        primeira compra. A recusa aqui é só conveniência — o servidor
        confere de novo e recusa igual. */
     const documento = (d.get('documento') || '').toString().trim();
-    if (!documento) { campoDoc()?.focus(); return diz('Informe o CPF ou CNPJ. Ele vai na nota fiscal.', true); }
+    if (!documento) { campoDoc()?.focus(); return diz('Informe o CPF ou CNPJ.', true); }
     if (!docValido(documento)) { campoDoc()?.focus(); return diz('Esse CPF ou CNPJ não existe. Confira os números.', true); }
 
     const arquivo = form.querySelector('input[name="arte"]')?.files?.[0] || null;

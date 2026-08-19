@@ -112,12 +112,10 @@ const CONFIG = {
       { id: 'baby-tee',           nome: 'Baby Tee', cores: 5,  img: 'baby-tee.webp' },
       { id: 'regata-boxy',        nome: 'Regata Boxy', cores: 6,  img: 'regata-boxy.webp' },
     ],
-    /* ⚠️ Conferido contra a fornecedor em 11/ago/2026. Tudo bate menos o
-       EXG, que lá custa mais caro e aqui não existe: Básica 77→83,
-       Oversized Clássica 81→85, Oversized Heavy 89→94. Como a página de
-       impressão especial não pergunta o tamanho da peça, toda venda de
-       EXG sai com R$ 4 a 6 a menos de margem. Só dá para resolver
-       colocando tamanho no orçamento.                                   */
+    /* ⚠️ A tabela de EXG diverge da do fornecedor, e a página de
+       impressão especial não pergunta o tamanho da peça. Os números e
+       o que a divergência custa por venda ficam em api/preco-config.php:
+       é conta de margem, e este arquivo o navegador baixa inteiro.     */
     /* acréscimo do fornecedor por tamanho de estampa */
     acrescimoFrente: { '12x12': 0, '15x20': 10, '25x30': 20, '35x40': 30, '40x50': 37 },
     acrescimoCostas: { 'sem': 0, '25x30': 28, '35x40': 38, '40x50': 45 },
@@ -170,9 +168,10 @@ const CONFIG = {
         desc: 'Desenho original, personagem ou cena. Feita por ilustrador parceiro e orçada caso a caso.',
         de: 600, ate: null, prazo: 'a combinar', quemFaz: 'parceiro' },
     ],
-    /* O ilustrador é contratado por fora; este é o multiplicador sobre
-       o orçamento dele. Serve para você fechar preço na hora.          */
-    markupIlustrador: null,
+      /* markupIlustrador: movido para api/preco-config.php. Era o
+         multiplicador sobre o orçamento do ilustrador, e estava aqui sem
+         nenhum uso — bastava dividir o preço por ele para saber quanto
+         o parceiro cobra.                                              */
     /* Conferir a arte do cliente continua de graça — é o que puxa a
        conversa. Cobrar só quando ela precisa ser CONSERTADA.           */
     conferenciaGratis: true,
