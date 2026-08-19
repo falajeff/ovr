@@ -709,6 +709,83 @@ ul, ol { list-style: none; }
 }
 .cart__semarte a { text-decoration: underline; text-underline-offset: 2px; font-weight: 500; }
 
+/* ------------------------ conta do cliente --------------------- */
+/* O link do cabeçalho nasce escondido e o JavaScript o revela quando
+   sabe se é "Entrar" ou "Minha conta". Aparecer com o rótulo errado e
+   trocar depois lê como bug. */
+.nav__conta {
+  font-size: 13px; letter-spacing: .02em; white-space: nowrap;
+  text-decoration: none; color: inherit; opacity: .85;
+}
+.nav__conta:hover { opacity: 1; text-decoration: underline; text-underline-offset: 4px; }
+
+.conta { padding-block: 64px 96px; }
+/* Coluna estreita nos formulários: campo largo demais custa precisão
+   de leitura e faz o olho voltar mais longe a cada linha. */
+.conta__caixa { max-width: 420px; margin-inline: auto; }
+.conta--larga .envelope { max-width: var(--largura); }
+
+.conta__titulo { font-size: clamp(28px, 4vw, 40px); margin-bottom: 8px; }
+.conta__apoio { margin-bottom: 28px; }
+
+.conta__form { display: grid; gap: 16px; margin-bottom: 20px; }
+.conta__form .campo > span,
+.conta__topo + * .campo > span {
+  font-family: var(--fonte-titulo); font-weight: 700; font-size: 12px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+.conta__form input {
+  width: 100%; padding: 11px 12px; border: 1px solid var(--fio);
+  background: #fff; font: inherit;
+}
+.conta__form input:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 1px; }
+.conta__dupla { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.conta__estado { font-size: 13px; line-height: 1.5; margin: 0; color: #1c7a3d; }
+.conta__estado--erro { color: var(--alerta); }
+
+.conta__linha { font-size: 14px; margin: 0 0 8px; }
+.conta__linha a { text-decoration: underline; text-underline-offset: 3px; }
+.conta__link {
+  background: none; border: 0; padding: 0; cursor: pointer; font: inherit;
+  font-size: 14px; color: var(--texto); text-decoration: underline; text-underline-offset: 3px;
+}
+
+/* ---- minha conta ---- */
+.conta__topo {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 24px; flex-wrap: wrap; margin-bottom: 28px;
+}
+.conta__nota {
+  border-left: 3px solid var(--accent); background: var(--bg-surface);
+  padding: 14px 16px; font-size: 14px; line-height: 1.55; margin-bottom: 28px;
+}
+.conta__grade { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start; }
+.conta__bloco { border: 1px solid var(--fio); background: #fff; padding: 24px; }
+.conta__bloco--largo { margin-top: 32px; }
+.conta__h2 {
+  font-family: var(--fonte-titulo); font-weight: 700; font-size: 12px;
+  letter-spacing: .08em; text-transform: uppercase; margin-bottom: 18px;
+}
+
+.conta__pedidos { display: grid; gap: 12px; }
+.conta__pedido { border: 1px solid var(--fio); padding: 16px; display: grid; gap: 8px; }
+.conta__pedido > div:first-child { display: flex; justify-content: space-between; gap: 16px; align-items: baseline; }
+.conta__itens { font-size: 14px; margin: 0; color: var(--texto-fraco); }
+.conta__pedido__fim { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.conta__situacao {
+  font-family: var(--fonte-titulo); font-weight: 700; font-size: 11px;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--texto-fraco);
+}
+
+@media (max-width: 760px) {
+  .conta__grade { grid-template-columns: 1fr; gap: 24px; }
+  .conta { padding-block: 40px 64px; }
+  /* O link de conta sai do cabeçalho no celular: lá o espaço é da
+     cesta e do menu, e o item já existe dentro do menu. */
+  .nav__conta { display: none; }
+}
+
 /* ------------------------ cupom -------------------------------- */
 .cupom { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--fio); }
 

@@ -169,38 +169,7 @@ const Carrinho = (() => {
     document.querySelectorAll('.nav__cesta').forEach(c => c.setAttribute('aria-expanded', 'false'));
   }
 
-  /* ---------------------- o que a pessoa já digitou ----------------
-     desenhar() reescreve o innerHTML inteiro, e com ele o formulário.
-     Sem isto, mudar a quantidade de um item apagava o nome e o e-mail
-     já preenchidos — e agora apagaria o CPF junto, bem no meio do
-     caminho de quem está tentando fechar.
-
-     O arquivo de arte é a exceção: por segurança o navegador não deixa
-     repor o valor de um <input type=file>, então quem escolher a arte e
-     depois mexer na quantidade precisa escolher de novo. Já era assim. */
-  let formGuardado = {};
-
-  function guardarForm() {
-    const f = raiz.querySelector('[data-form]');
-    if (!f) return;
-    f.querySelectorAll('input[name], textarea[name]').forEach(el => {
-      if (el.type === 'file') return;
-      formGuardado[el.name] = el.value;
-    });
-  }
-
-  function restaurarForm() {
-    const f = raiz.querySelector('[data-form]');
-    if (!f) return;
-    Object.entries(formGuardado).forEach(([nome, valor]) => {
-      if (!valor) return;
-      const el = f.querySelector(`[name="${nome}"]`);
-      if (el && el.type !== 'file' && !el.value) el.value = valor;
-    });
-  }
-
   async function desenhar() {
-    guardarForm();
     const c = await Carrinho.calcular();
     if (!c.todos.length) {
       painel.innerHTML = `<div class="previa__vazio">
@@ -316,6 +285,45 @@ const Carrinho = (() => {
       const el = f.querySelector(`[name="${nome}"]`);
       if (el && el.type !== 'file' && !el.value) el.value = valor;
     });
+  }
+
+  /* ---------------------- conta, quando existe ---------------------
+     Preencher o formulário com o que já está salvo é o que faz a conta
+     valer a pena. Sem isto, criar conta seria só mais um cadastro.
+
+     Só preenche campo VAZIO: se a pessoa digitou outro nome para este
+     pedido, o que ela escreveu manda. E nada disso é obrigatório — o
+     pedido continua funcionando para quem nunca criou conta.          */
+  async function preencherPelaConta() {
+    if (typeof Conta === 'undefined') return;
+    const c = await Conta.eu().catch(() => null);
+    if (!c) return;
+
+    const f = raiz.querySelector('[data-form]');
+    if (!f) return;
+
+    const doc = c.documento || '';
+    const e = c.endereco || {};
+    const por = (nome, valor) => {
+      const el = f.querySelector(`[name="${nome}"]`);
+      if (el && !el.value && valor) el.value = valor;
+    };
+
+    por('nome', c.nome);
+    por('email', c.email);
+    por('zap', c.zap);
+    por('documento', doc ? mascaraDoc(doc) : '');
+    /* Cidade e UF juntas, que é como o campo do pedido pede. */
+    por('cidade', e.cidade ? (e.uf ? `${e.cidade} / ${e.uf}` : e.cidade) : '');
+
+    /* O CEP salvo já cota o frete sozinho. É o passo que mais some do
+       carrinho de quem já comprou uma vez. */
+    const cep = raiz.querySelector('[data-cep]');
+    if (cep && !cep.value && e.cep) cep.value = e.cep.replace(/^(\d{5})(\d{3})$/, '$1-$2');
+
+    /* Guarda também, para o próximo redesenho não perder o que veio da
+       conta — o restaurarForm() só conhece o que foi digitado. */
+    guardarForm();
   }
 
   async function desenhar() {
@@ -472,6 +480,7 @@ const Carrinho = (() => {
 
     restaurarForm();
     ligar(c);
+    preencherPelaConta();
   }
 
   function ligar(c) {

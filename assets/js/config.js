@@ -234,6 +234,16 @@ const CONFIG = {
     maxItens: 40,
   },
 
+  /* ---------- 5c. CONTA DO CLIENTE --------------------------- */
+  conta: {
+    /* Mora no painel porque a identidade mora no painel: senha, cadastro
+       e histórico de pedido são de lá. Aqui só existe a tela.          */
+    endpoint: 'https://painel.ovrcamisetas.com.br/wp-json/ovr/v1/conta',
+    /* Mínimo que o servidor também exige. Repetido aqui só para o aviso
+       aparecer antes de a pessoa apertar o botão. */
+    senhaMinima: 8,
+  },
+
   /* ---------- 5c. EMBALAGEM ---------------------------------- */
   /* Serve para dizer ao cliente (e a você) em que caixa o pedido cabe,
      e para estimar o peso do frete.

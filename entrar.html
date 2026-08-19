@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Impressão especial DTG · OVR</title>
-<meta name="description" content="Impressão direta no tecido para arte fotográfica, degradê fino e muitos tons de uma vez.">
+<title>Entrar · OVR</title>
+<meta name="description" content="Entre na sua conta da OVR para salvar endereço, acompanhar pedidos e comprar em menos cliques.">
 <link rel="icon" href="assets/img/marca/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,15 +14,16 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="OVR">
 <meta property="og:locale" content="pt_BR">
-<meta property="og:title" content="Impressão especial DTG · OVR">
-<meta property="og:description" content="Impressão direta no tecido para arte fotográfica, degradê fino e muitos tons de uma vez.">
-<meta property="og:url" content="https://ovrcamisetas.com.br/impressao-especial.html">
+<meta property="og:title" content="Entrar · OVR">
+<meta property="og:description" content="Entre na sua conta da OVR para salvar endereço, acompanhar pedidos e comprar em menos cliques.">
+<meta property="og:url" content="https://ovrcamisetas.com.br/entrar.html">
 <meta property="og:image" content="https://ovrcamisetas.com.br/assets/img/marca/og.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#090a0c">
-<link rel="canonical" href="https://ovrcamisetas.com.br/impressao-especial.html">
+<link rel="canonical" href="https://ovrcamisetas.com.br/entrar.html">
 </head>
 <body>
 <a class="pular" href="#conteudo">Pular para o conteúdo</a>
@@ -81,63 +82,42 @@
 </div>
 
 <main id="conteudo" tabindex="-1">
+  <section class="conta">
+    <div class="envelope conta__caixa">
 
-  <section class="inverso" style="padding-block:clamp(48px,6vw,88px)">
-    <div class="envelope pilha-16">
-      <p class="t-etiqueta volt">Impressão direta no tecido / A partir de 1 peça</p>
-      <h1 class="t-display" style="font-size:clamp(56px,9vw,120px)">DTG.</h1>
-      <p class="t-corpo-g" style="max-width:56ch">Tinta absorvida pela malha, sem recorte em volta do desenho. Para a arte que o DTF não dá conta: foto, degradê fino e muitos tons de uma vez.</p>
-    </div>
-  </section>
+      <div data-bloco="entrar">
+        <h1 class="t-titulo conta__titulo">Entrar</h1>
+        <p class="t-corpo conta__apoio">Com conta, seu endereço e seus dados ficam salvos e o pedido sai em bem menos cliques.</p>
 
-  <section class="secao">
-    <div class="envelope">
-      <div class="cabecalho-secao">
-        <h2 class="t-h1">Modelagens.</h2>
-        <p class="t-corpo">Sete bases, todas com estampa frente até 35 × 40 cm inclusa. Costas e tamanhos maiores de estampa somam no orçamento.</p>
+        <form class="conta__form" data-form-entrar novalidate>
+          <label class="campo"><span>E-mail</span>
+            <input name="email" type="email" autocomplete="email" required></label>
+          <label class="campo"><span>Senha</span>
+            <input name="senha" type="password" autocomplete="current-password" required></label>
+          <p class="conta__estado" data-estado hidden></p>
+          <button class="btn btn--volt btn--cheio" type="submit">Entrar</button>
+        </form>
+
+        <p class="conta__linha"><button type="button" class="conta__link" data-ir="esqueci">Esqueci minha senha</button></p>
+        <p class="conta__linha">Ainda não tem conta? <a href="criar-conta.html">Criar a minha</a></p>
       </div>
-      <div class="grade-produtos" data-modelagens></div>
-    </div>
-  </section>
 
-  <section class="secao inverso">
-    <div class="envelope">
-      <div class="cabecalho-secao"><h2 class="t-h1">Por que DTG.</h2></div>
-      <div class="vantagens">
-        <div class="vantagem"><h3>Arte fotográfica</h3><p class="t-corpo">Degradê, sombra e muitos tons saem fiéis. É onde o DTF trava.</p></div>
-        <div class="vantagem"><h3>Sem contorno</h3><p class="t-corpo">A tinta é absorvida pela malha. Não existe recorte em volta do desenho.</p></div>
-        <div class="vantagem"><h3>Sem custo de preparação</h3><p class="t-corpo">Não tem taxa de setup. O que você paga é a peça, seja uma ou vinte.</p></div>
-        <div class="vantagem"><h3>Caimento e respiro</h3><p class="t-corpo">A peça continua respirando e o desenho envelhece junto com a malha.</p></div>
+      <div data-bloco="esqueci" hidden>
+        <h1 class="t-titulo conta__titulo">Esqueci a senha</h1>
+        <p class="t-corpo conta__apoio">Diga o e-mail da conta que a gente manda um link para você escolher outra. Ele vale por 30 minutos.</p>
+
+        <form class="conta__form" data-form-esqueci novalidate>
+          <label class="campo"><span>E-mail</span>
+            <input name="email" type="email" autocomplete="email" required></label>
+          <p class="conta__estado" data-estado hidden></p>
+          <button class="btn btn--volt btn--cheio" type="submit">Mandar o link</button>
+        </form>
+
+        <p class="conta__linha"><button type="button" class="conta__link" data-ir="entrar">Voltar para entrar</button></p>
       </div>
-      <p class="t-corpo" style="margin-top:32px; max-width:70ch">O que ele não faz: rende melhor em algodão e neon não reproduz. E em arte de cor chapada o DTF entrega o mesmo por menos, em qualquer quantidade. A gente avisa quando for o caso.</p>
+
     </div>
   </section>
-
-  <section class="secao superficie">
-    <div class="envelope">
-      <div class="cabecalho-secao"><h2 class="t-h1">Como funciona.</h2></div>
-      <div class="vantagens">
-        <div class="vantagem"><h3>Sem pedido mínimo</h3><p class="t-corpo">Uma peça já sai. O DTF também, e mais barato: escolha pela arte, não pela quantidade.</p></div>
-        <div class="vantagem"><h3>Quando trocar por DTF</h3><p class="t-corpo">Se a arte for de cor chapada, o DTF faz igual e custa menos, em qualquer quantidade. A gente avisa.</p></div>
-        <div class="vantagem"><h3>7 dias úteis</h3><p class="t-corpo">Prazo de produção. Artes complexas podem levar mais.</p></div>
-        <div class="vantagem"><h3>Envio separado</h3><p class="t-corpo">A peça sai direto da produção e não entra na regra de frete grátis.</p></div>
-      </div>
-      <p class="t-corpo" style="margin-top:32px">Etiqueta termocolante com a sua marca a partir de <span data-etiqueta></span> por peça.</p>
-      <div style="margin-top:32px"><a class="btn btn--ink" data-zap="Oi! Quero um orçamento de impressão especial (DTG) na OVR.">Pedir orçamento de DTG</a></div>
-    </div>
-  </section>
-
-
-  <section class="secao superficie">
-    <div class="envelope">
-      <div class="cabecalho-secao">
-        <h2 class="t-h2">Medidas das peças.</h2>
-        <p class="t-corpo">Medida da peça, não do corpo. Quem imprime é parceiro, então a tabela é a dele.</p>
-      </div>
-      <div class="medidas-dtg" data-medidas-dtg></div>
-    </div>
-  </section>
-
 </main>
 
 <footer class="rodape">
@@ -172,10 +152,9 @@
 </footer>
 
 <script src="assets/js/config.js?v=57"></script>
-<script src="assets/js/preco.js?v=57"></script>
 <script src="assets/js/app.js?v=57"></script>
 <script src="assets/js/conta.js?v=57"></script>
-<script src="assets/js/carrinho.js?v=57"></script>
-<script src="assets/js/dtg.js?v=57"></script>
+<script src="assets/js/tela-conta-comum.js?v=57"></script>
+<script src="assets/js/tela-entrar.js?v=57"></script>
 </body>
 </html>
