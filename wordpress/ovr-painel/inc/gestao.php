@@ -1330,11 +1330,20 @@ CSS;
    para mudar um percentual.
 ------------------------------------------------------------------ */
 function ovr_g_tela_cupons() {
-    if (!current_user_can('edit_pedidos')) { echo '<p>Sem permissão.</p>'; return; }
+    if (!current_user_can('edit_pedidos')) {
+        ovr_g_cabecalho('Cupons', 'cupons');
+        echo '<p class="g-lead">Sem permissão para ver os cupons.</p>';
+        ovr_g_rodape();
+        return;
+    }
 
     $aviso = ovr_g_cupons_salvar();
     $lista = ovr_cupons_salvos();
     $edita = isset($_GET['editar']) ? ovr_cupom_por_codigo(sanitize_text_field(wp_unslash($_GET['editar']))) : null;
+
+    /* Sem isto a página sai sem cabeçalho, sem menu e sem folha de
+       estilo: é ovr_g_cabecalho que abre o <html> e imprime o CSS. */
+    ovr_g_cabecalho('Cupons', 'cupons');
 
     echo '<h1 class="g-h1">Cupons</h1>';
     echo '<p class="g-lead">O desconto é calculado aqui e o site só recebe o valor pronto. '
@@ -1438,6 +1447,8 @@ function ovr_g_tela_cupons() {
        . '<code>api/painel-chave.php</code>, no servidor do site. Só precisa mexer se o cupom '
        . 'parar de funcionar por completo.</p>';
     printf('<div class="g-bloco g-cupom-chave"><code>%s</code></div>', esc_html(ovr_cupom_chave()));
+
+    ovr_g_rodape();
 }
 
 
