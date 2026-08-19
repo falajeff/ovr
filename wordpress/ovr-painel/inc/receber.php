@@ -74,8 +74,14 @@ add_action('rest_api_init', function () {
         $origem = $_SERVER['HTTP_ORIGIN'] ?? '';
         if (in_array($origem, ovr_origens_permitidas(), true)) {
             header('Access-Control-Allow-Origin: ' . $origem);
-            header('Access-Control-Allow-Methods: POST, OPTIONS');
+            header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
             header('Access-Control-Allow-Headers: Content-Type');
+            /* Sem isto o navegador manda a requisição mas DESCARTA o
+               cookie de sessão, e a conta do cliente nunca se mantém
+               logada. Só vale porque a origem já foi conferida acima:
+               liberar credencial com origem curinga é proibido pelo
+               próprio navegador, e com razão. */
+            header('Access-Control-Allow-Credentials: true');
             header('Access-Control-Max-Age: 600');
         }
         header('Vary: Origin');
@@ -211,10 +217,15 @@ function ovr_receber_pedido(WP_REST_Request $req) {
 
     ovr_avisar_pedido_novo($post_id);
 
+    /* A tela de sucesso do carrinho lê este campo. Enquanto ele não
+       existia, ela dizia "o e-mail não saiu" em TODO pedido. */
+    $enviado = ovr_email_pedido_cliente($post_id);
+
     return new WP_REST_Response([
-        'ok'     => true,
-        'numero' => get_the_title($post_id),
-        'arte'   => is_wp_error($arte) ? 'falhou' : ($arte ? 'recebida' : 'sem'),
+        'ok'            => true,
+        'numero'        => get_the_title($post_id),
+        'arte'          => is_wp_error($arte) ? 'falhou' : ($arte ? 'recebida' : 'sem'),
+        'email_enviado' => $enviado,
     ], 201);
 }
 
@@ -371,4 +382,44 @@ function ovr_avisar_pedido_novo($post_id) {
     ];
     wp_mail(get_option('admin_email'), 'OVR · pedido ' . $numero . ' pelo site',
             implode("\n", $corpo));
+}
+
+/* ------------------------------------------------------------------
+   Confirmação para o CLIENTE
+
+   Estava desenhada no Figma desde sempre e nunca tinha sido escrita. A
+   consequência aparecia na tela de sucesso do carrinho: como o servidor
+   nunca devolvia `email_enviado`, todo pedido terminava com "o e-mail
+   não saiu", que é uma frase de erro no momento mais importante do
+   funil.                                                              */
+function ovr_email_pedido_cliente(int $post_id): bool {
+    $m = fn($k) => get_post_meta($post_id, $k, true);
+    $para = $m('_ovr_cliente_email');
+    if (!$para || !is_email($para)) return false;
+
+    $numero = get_the_title($post_id);
+    $nome   = $m('_ovr_cliente_nome');
+    $itens  = (string) $m('_ovr_itens');
+    $total  = (int) $m('_ovr_valor_itens') + (int) $m('_ovr_valor_frete') - (int) $m('_ovr_desconto');
+
+    $resumo = trim($itens);
+    if ($total > 0) $resumo .= "\nTotal estimado: " . ovr_reais($total);
+
+    $zap = 'https://wa.me/5514996548259?text=' . rawurlencode('Oi! Sobre o pedido ' . $numero);
+
+    $miolo = ovr_email_kicker('Pedido recebido')
+           . ovr_email_titulo('Recebemos sua solicitação.')
+           . ovr_email_paragrafo('Oi, ' . $nome . '! Seu pedido ' . $numero . ' chegou para a gente. '
+                               . 'Agora vamos conferir estoque, arte, frete e prazo antes de fechar tudo '
+                               . 'com você pelo WhatsApp.')
+           . ovr_email_caixa('Resumo do pedido', $resumo)
+           . ovr_email_paragrafo('Quer agilizar? Mande uma mensagem agora. O pedido só fica fechado '
+                               . 'depois da nossa confirmação no WhatsApp.', 14)
+           . ovr_email_botao('Falar no WhatsApp', $zap)
+           . ovr_email_nota('Se o botão não abrir, fale com a OVR pelo número (14) 99654-8259.');
+
+    return ovr_email_enviar($para, 'OVR · Recebemos seu pedido ' . $numero,
+        ovr_email_moldura($miolo,
+            'OVR Camisetas · Este e-mail confirma o recebimento da solicitação; '
+          . 'não é confirmação final de estoque, preço, frete ou prazo.'));
 }
