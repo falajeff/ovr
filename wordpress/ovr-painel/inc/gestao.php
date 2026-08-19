@@ -158,6 +158,10 @@ function ovr_g_salvar() {
         wp_die('Sessão expirada. Volte, recarregue a página e tente de novo.');
     }
 
+    /* Cupom tem formulário próprio, na tela de Cupons, e nada a ver com
+       pedido. Sai por aqui antes de qualquer coisa que mexa em post. */
+    if (isset($_POST['cupom_acao'])) { ovr_g_cupons_salvar(); return; }
+
     $id = isset($_POST['pedido_id']) ? (int) $_POST['pedido_id'] : 0;
     $acao = isset($_POST['acao']) ? sanitize_key($_POST['acao']) : 'salvar';
 
@@ -1337,7 +1341,9 @@ function ovr_g_tela_cupons() {
         return;
     }
 
-    $aviso = ovr_g_cupons_salvar();
+    /* O aviso vem pela URL porque quem salva sai por um redirecionamento,
+       igual ao resto do painel: sem isso o F5 regrava o cupom. */
+    $aviso = ovr_g_cupom_aviso();
     $lista = ovr_cupons_salvos();
     $edita = isset($_GET['editar']) ? ovr_cupom_por_codigo(sanitize_text_field(wp_unslash($_GET['editar']))) : null;
 
@@ -1400,7 +1406,7 @@ function ovr_g_tela_cupons() {
     printf('<h2 class="g-h2" style="margin-top:40px">%s</h2>',
         $edita ? 'Editar ' . esc_html($edita['codigo']) : 'Novo cupom');
     printf('<form class="g-bloco g-cupom-form" method="post" action="%s">', esc_url(ovr_g_url('cupons')));
-    wp_nonce_field('ovr_cupom');
+    wp_nonce_field('ovr_gestao_salvar', 'ovr_g_nonce');
     if ($edita) printf('<input type="hidden" name="original" value="%s">', esc_attr($edita['codigo']));
 
     echo '<div class="g-cupom-form__grade">';
@@ -1431,11 +1437,11 @@ function ovr_g_tela_cupons() {
         checked(!$edita || !empty($edita['ativo']), true, false));
 
     echo '<div class="g-cupom-form__acoes">';
-    printf('<button class="g-btn g-btn--volt" type="submit" name="acao" value="salvar">%s</button>',
+    printf('<button class="g-btn g-btn--volt" type="submit" name="cupom_acao" value="salvar">%s</button>',
         $edita ? 'Salvar' : 'Criar cupom');
     if ($edita) {
         printf('<a class="g-btn g-btn--linha" href="%s">Cancelar</a>', esc_url(ovr_g_url('cupons')));
-        printf('<button class="g-btn g-btn--linha g-cupom-form__apagar" type="submit" name="acao" value="apagar" '
+        printf('<button class="g-btn g-btn--linha g-cupom-form__apagar" type="submit" name="cupom_acao" value="apagar" '
              . 'onclick="return confirm(\'Apagar o cupom %s? Quem já usou não é afetado.\')">Apagar</button>',
             esc_js($edita['codigo']));
     }
@@ -1452,34 +1458,41 @@ function ovr_g_tela_cupons() {
 }
 
 
-/* Grava, apaga, e devolve o aviso. Fora da tela para o desenho não ficar
-   embolado com a regra. */
-function ovr_g_cupons_salvar(): ?array {
-    if (empty($_POST['acao'])) return null;
-    /* Nonce próprio, e não check_admin_referer: aquele mata a página com
-       wp_die quando falha, e aqui um POST velho merece um aviso, não uma
-       tela branca. */
-    if (!wp_verify_nonce($_POST['_wpnonce'] ?? '', 'ovr_cupom')) {
-        return ['erro', 'A página expirou. Recarregue e tente de novo.'];
-    }
-    $acao   = sanitize_text_field(wp_unslash($_POST['acao']));
+/* Grava ou apaga, e SAI por redirecionamento — a mesma regra do resto do
+   painel: sem isso, um F5 depois de salvar regrava o cupom.
+
+   Quem confere o nonce é ovr_g_salvar, que roda antes e é dona de todo
+   POST de /gestao. Duas checagens do mesmo nonce seria só barulho. */
+function ovr_g_cupons_salvar(): void {
+    /* Closure de bloco, e não `fn(...) => redirect(...) || exit`: o `||`
+       curto-circuita, e como o redirect devolve true o exit nunca rodaria.
+       A execução seguiria com o cabeçalho já mandado. */
+    $volta = function ($args) {
+        wp_safe_redirect(ovr_g_url('cupons', $args));
+        exit;
+    };
+
+    if (!current_user_can('edit_pedidos')) { $volta(['aviso' => 'permissao']); }
+
+    $acao   = sanitize_key(wp_unslash($_POST['cupom_acao'] ?? ''));
     $codigo = strtoupper(preg_replace('/[^A-Z0-9]/i', '', sanitize_text_field(wp_unslash($_POST['codigo'] ?? ''))));
-    $orig   = strtoupper(sanitize_text_field(wp_unslash($_POST['original'] ?? '')));
+    $orig   = strtoupper(preg_replace('/[^A-Z0-9]/i', '', sanitize_text_field(wp_unslash($_POST['original'] ?? ''))));
     $lista  = ovr_cupons_salvos();
 
     if ($acao === 'apagar' && $orig) {
-        $lista = array_filter($lista, fn($c) => ($c['codigo'] ?? '') !== $orig);
-        ovr_cupons_gravar($lista);
-        return ['ok', 'Cupom ' . $orig . ' apagado. Quem já usou não foi afetado.'];
+        ovr_cupons_gravar(array_filter($lista, fn($c) => ($c['codigo'] ?? '') !== $orig));
+        $volta(['aviso' => 'apagado', 'cod' => $orig]);
     }
-    if ($acao !== 'salvar') return null;
-    if ($codigo === '') return ['erro', 'O código não pode ficar vazio.'];
+    if ($acao !== 'salvar')  { $volta([]); }
+    if ($codigo === '')      { $volta(['aviso' => 'sem-codigo']); }
 
-    /* Centavos, sempre. Aceita "150,00" e "150.00". */
+    /* Centavos, sempre. Aceita "150,00", "150.00" e "1.500,00". */
     $centavos = function ($v) {
-        $v = trim(str_replace(['.', ' '], '', (string) $v));
+        $v = trim((string) $v);
+        if ($v === '') return 0;
+        $v = str_replace(['.', ' '], '', $v);   // separador de milhar fora
         $v = str_replace(',', '.', $v);
-        return $v === '' ? 0 : (int) round(((float) $v) * 100);
+        return (int) round(((float) $v) * 100);
     };
 
     $novo = [
@@ -1500,10 +1513,25 @@ function ovr_g_cupons_salvar(): ?array {
     }
     if (!$achou) {
         foreach ($lista as $c) {
-            if (($c['codigo'] ?? '') === $codigo) return ['erro', 'Já existe um cupom com o código ' . $codigo . '.'];
+            if (($c['codigo'] ?? '') === $codigo) { $volta(['aviso' => 'repetido', 'cod' => $codigo]); }
         }
         $lista[] = $novo;
     }
     ovr_cupons_gravar($lista);
-    return ['ok', 'Cupom ' . $codigo . ' salvo. Já vale no site.'];
+    $volta(['aviso' => 'salvo', 'cod' => $codigo]);
+}
+
+/* O aviso que veio pelo redirecionamento. Texto aqui e não na URL: a
+   barra de endereço não é lugar de frase. */
+function ovr_g_cupom_aviso(): ?array {
+    $a = sanitize_key($_GET['aviso'] ?? '');
+    if (!$a) return null;
+    $cod = strtoupper(preg_replace('/[^A-Z0-9]/i', '', sanitize_text_field(wp_unslash($_GET['cod'] ?? ''))));
+    return [
+        'salvo'      => ['ok',   'Cupom ' . $cod . ' salvo. Já vale no site, sem subir arquivo.'],
+        'apagado'    => ['ok',   'Cupom ' . $cod . ' apagado. Quem já usou não foi afetado.'],
+        'repetido'   => ['erro', 'Já existe um cupom com o código ' . $cod . '.'],
+        'sem-codigo' => ['erro', 'O código não pode ficar vazio.'],
+        'permissao'  => ['erro', 'Sem permissão para mexer nos cupons.'],
+    ][$a] ?? null;
 }
