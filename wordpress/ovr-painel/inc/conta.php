@@ -101,6 +101,24 @@ function ovr_sessao_usuario(): ?WP_User {
 /* ------------------------------------------------------------------
    Portas comuns a toda chamada de conta                              */
 function ovr_conta_porta(WP_REST_Request $req) {
+    /* NADA daqui pode ser cacheado. Toda rota de conta responde uma
+       coisa diferente para cada pessoa, e um cache na frente delas
+       entrega o nome, o e-mail, o CPF e o endereço de um cliente para o
+       próximo visitante.
+
+       Isto foi encontrado em produção: o LiteSpeed da Hostinger estava
+       devolvendo `x-litespeed-cache: hit` para /conta/eu. O que estava
+       guardado era a resposta deslogada, inofensiva por sorte, mas a
+       mesma regra guardaria uma resposta logada.
+
+       Três cabeçalhos porque são três camadas: o padrão HTTP, o do
+       LiteSpeed, que ignora o primeiro em algumas configurações, e o do
+       WordPress, que também marca a resposta como privada. */
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0, private');
+    header('X-LiteSpeed-Cache-Control: no-cache, no-store');
+    header('Pragma: no-cache');
+    if (!defined('DONOTCACHEPAGE')) define('DONOTCACHEPAGE', true);
+
     $origem = $req->get_header('origin') ?: '';
     if (!in_array($origem, ovr_origens_permitidas(), true)) {
         return ovr_erro('ovr_origem', 'Origem não autorizada.', 403);
@@ -421,7 +439,32 @@ function ovr_conta_email_senha(WP_User $u, string $link) {
    tentou cadastrar de novo recebe o caminho de volta por e-mail. */
 function ovr_conta_avisar_duplicado(string $email) {
     $u = get_user_by('email', $email);
-    if (!$u || !ovr_eh_cliente($u)) return;
+    if (!$u) return;
+
+    /* E-mail que existe como usuário do painel, e não como cliente. Foi
+       o que aconteceu no primeiro teste: o endereço do dono da loja já
+       era o admin do WordPress, o cadastro foi recusado e ninguém
+       recebeu nada.
+
+       Manda mesmo assim, com outro texto. Avisar não vaza: quem recebe
+       é o próprio dono do endereço, nunca quem tentou o cadastro. O que
+       não se pode é dar o papel de cliente para um e-mail existente,
+       porque aí qualquer um tomaria a conta do admin "se cadastrando"
+       com o e-mail dele. */
+    if (!ovr_eh_cliente($u)) {
+        $miolo = ovr_email_kicker('Cadastro recusado')
+               . ovr_email_titulo('Este endereço já está em uso.')
+               . ovr_email_paragrafo('Alguém tentou criar uma conta de cliente com este e-mail, mas ele já '
+                                   . 'pertence a um acesso interno da OVR. Por segurança, o cadastro não foi feito.')
+               . ovr_email_paragrafo('Se foi você e quer comprar pelo site, use outro endereço de e-mail, '
+                                   . 'ou fale com a gente pelo WhatsApp que a gente resolve.', 14)
+               . ovr_email_botao('Falar no WhatsApp', 'https://wa.me/5514996548259')
+               . ovr_email_nota('Se não foi você, pode ignorar. Nada mudou no seu acesso.');
+        ovr_email_enviar($u->user_email, 'Não consegui criar a conta com este e-mail',
+            ovr_email_moldura($miolo,
+                'OVR Camisetas · Você recebeu este e-mail porque tentaram criar uma conta com o seu endereço.'));
+        return;
+    }
 
     $miolo = ovr_email_kicker('Cadastro repetido')
            . ovr_email_titulo('Este e-mail já é seu.')
