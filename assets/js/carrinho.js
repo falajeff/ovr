@@ -169,7 +169,38 @@ const Carrinho = (() => {
     document.querySelectorAll('.nav__cesta').forEach(c => c.setAttribute('aria-expanded', 'false'));
   }
 
+  /* ---------------------- o que a pessoa já digitou ----------------
+     desenhar() reescreve o innerHTML inteiro, e com ele o formulário.
+     Sem isto, mudar a quantidade de um item apagava o nome e o e-mail
+     já preenchidos — e agora apagaria o CPF junto, bem no meio do
+     caminho de quem está tentando fechar.
+
+     O arquivo de arte é a exceção: por segurança o navegador não deixa
+     repor o valor de um <input type=file>, então quem escolher a arte e
+     depois mexer na quantidade precisa escolher de novo. Já era assim. */
+  let formGuardado = {};
+
+  function guardarForm() {
+    const f = raiz.querySelector('[data-form]');
+    if (!f) return;
+    f.querySelectorAll('input[name], textarea[name]').forEach(el => {
+      if (el.type === 'file') return;
+      formGuardado[el.name] = el.value;
+    });
+  }
+
+  function restaurarForm() {
+    const f = raiz.querySelector('[data-form]');
+    if (!f) return;
+    Object.entries(formGuardado).forEach(([nome, valor]) => {
+      if (!valor) return;
+      const el = f.querySelector(`[name="${nome}"]`);
+      if (el && el.type !== 'file' && !el.value) el.value = valor;
+    });
+  }
+
   async function desenhar() {
+    guardarForm();
     const c = await Carrinho.calcular();
     if (!c.todos.length) {
       painel.innerHTML = `<div class="previa__vazio">
@@ -257,7 +288,38 @@ const Carrinho = (() => {
      rápido demais — é o jeito barato de barrar robô sem CAPTCHA.     */
   const abriuEm = Math.floor(Date.now() / 1000);
 
+  /* ---------------------- o que a pessoa já digitou ----------------
+     desenhar() reescreve o innerHTML inteiro, e com ele o formulário.
+     Sem isto, mudar a quantidade de um item apagava o nome e o e-mail
+     já preenchidos — e agora apagaria o CPF junto, bem no meio do
+     caminho de quem está tentando fechar.
+
+     O arquivo de arte é a exceção: por segurança o navegador não deixa
+     repor o valor de um <input type=file>, então quem escolher a arte e
+     depois mexer na quantidade precisa escolher de novo. Já era assim. */
+  let formGuardado = {};
+
+  function guardarForm() {
+    const f = raiz.querySelector('[data-form]');
+    if (!f) return;
+    f.querySelectorAll('input[name], textarea[name]').forEach(el => {
+      if (el.type === 'file') return;
+      formGuardado[el.name] = el.value;
+    });
+  }
+
+  function restaurarForm() {
+    const f = raiz.querySelector('[data-form]');
+    if (!f) return;
+    Object.entries(formGuardado).forEach(([nome, valor]) => {
+      if (!valor) return;
+      const el = f.querySelector(`[name="${nome}"]`);
+      if (el && el.type !== 'file' && !el.value) el.value = valor;
+    });
+  }
+
   async function desenhar() {
+    guardarForm();
     const c = await Carrinho.calcular();
 
     if (!c.todos.length) {
@@ -273,8 +335,10 @@ const Carrinho = (() => {
     }
 
     /* ---------------------- cupom ---------------------------------
-       O documento fica aqui dentro, e não no formulário, porque quem
-       não usa cupom não precisa informar CPF para pedir um orçamento.
+       O documento NÃO fica aqui: ele é campo obrigatório do formulário,
+       ao lado do e-mail. Duplicar o campo faria a pessoa digitar o
+       mesmo CPF duas vezes na mesma tela.
+
        Nada de percentual ou teto neste arquivo: a tela só mostra o que
        o servidor respondeu. */
     const blocoCupom = c => {
@@ -290,10 +354,6 @@ const Carrinho = (() => {
                        spellcheck="false" value="${esc(cupomDigitado.codigo)}">
                 <button type="button" class="btn btn--linha" data-cupom-aplicar>Aplicar</button>
               </span></label>
-            <label class="campo"><span>CPF ou CNPJ</span>
-              <input type="text" data-cupom-doc autocomplete="off" placeholder="000.000.000-00"
-                     value="${esc(cupomDigitado.documento)}">
-              <em class="t-meta">Confere se é a sua primeira compra, e vai na nota.</em></label>
             ${r.erro ? `<p class="cupom__aviso cupom__aviso--erro">${esc(r.erro)}</p>` : ''}
             ${r.codigo ? `<p class="cupom__aviso cupom__aviso--ok">Cupom ${esc(r.codigo)} aplicado${r.noTeto ? `, no teto de ${reais(r.desconto)}` : ''}. <button type="button" class="cupom__tirar" data-cupom-tirar>Tirar</button></p>` : ''}
           </div>
@@ -347,12 +407,6 @@ const Carrinho = (() => {
             <div class="resumo__linha resumo__total"><span>Total</span><strong data-total-geral>${reais(c.aPagar)}</strong></div>
             ${!c.freteGratis ? `<p class="t-meta">Frete grátis a partir de ${reais(CONFIG.venda.freteGratis.valor)} para ${CONFIG.venda.freteGratis.estados.join(', ')}.</p>` : ''}
 
-            <!-- Sem o desconto o pedido passava dos R$ 1.500 e ia de graça;
-                 com ele, não passa mais. Dizer isso na cara evita que o
-                 cliente descubra no fim e ache que foi pego. -->
-            ${c.desconto > 0 && c.total >= CONFIG.venda.freteGratis.valor && c.aPagar < CONFIG.venda.freteGratis.valor
-              ? `<p class="cart__alerta">Com o cupom o pedido fica abaixo de ${reais(CONFIG.venda.freteGratis.valor)} e sai da faixa de frete grátis. Se preferir, tire o cupom: dependendo do seu CEP o frete custa mais que o desconto.</p>` : ''}
-
             ${blocoCupom(c)}
 
             <!-- O cliente que não sabe quanto custa o envio desiste no
@@ -383,6 +437,9 @@ const Carrinho = (() => {
             <label class="campo"><span>E-mail</span>
               <input name="email" type="email" required autocomplete="email"></label>
             <p class="t-meta" style="margin-top:-8px">A confirmação do pedido e o botão para agilizar pelo WhatsApp chegam neste e-mail.</p>
+            <label class="campo"><span>CPF ou CNPJ</span>
+              <input name="documento" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" required>
+              <em class="t-meta">Vai na nota fiscal. É também o que identifica a primeira compra.</em></label>
             <label class="campo"><span>Cidade / UF</span>
               <input name="cidade" autocomplete="address-level2"></label>
 
@@ -413,6 +470,7 @@ const Carrinho = (() => {
         </div>
       </div>`;
 
+    restaurarForm();
     ligar(c);
   }
 
@@ -445,11 +503,11 @@ const Carrinho = (() => {
      aqui fora, aplicar o cupom apagaria os dois campos na hora de
      mostrar o resultado. */
   let cupomAberto = false;
-  let cupomDigitado = { codigo: '', documento: '' };
+  let cupomDigitado = { codigo: '' };
 
-  /* Máscara só de exibição. Quem valida é o servidor, e ele aceita com
-     ou sem pontuação — isto existe para o campo ficar legível enquanto
-     se digita, não para filtrar. */
+  /* Máscara só de exibição. Quem valida de verdade é o servidor, e ele
+     aceita com ou sem pontuação — isto existe para o campo ficar
+     legível enquanto se digita, não para filtrar. */
   function mascaraDoc(v) {
     const d = v.replace(/[^0-9A-Za-z]/g, '').toUpperCase().slice(0, 14);
     if (d.length <= 11 && /^\d*$/.test(d)) {
@@ -463,13 +521,63 @@ const Carrinho = (() => {
             .replace(/(.{4})(\d{1,2})$/, '$1-$2');
   }
 
+  /* ---------------------- documento, do lado da tela ---------------
+     A mesma conta do servidor (api/documento.php). Aqui ela NÃO é
+     controle: é retorno imediato, para a pessoa descobrir o dígito
+     errado enquanto digita e não depois de apertar enviar. Quem decide
+     continua sendo o servidor — se este trecho fosse burlado, o pedido
+     seria recusado lá.
+
+     `ord - 48` no lugar do dígito porque o CNPJ aceita letra nas doze
+     primeiras posições desde julho de 2026. Para '0'..'9' dá no mesmo. */
+  function dvDoc(base, pesos) {
+    let soma = 0;
+    for (let i = 0; i < base.length; i++) soma += (base.charCodeAt(i) - 48) * pesos[i];
+    const r = soma % 11;
+    return String(r < 2 ? 0 : 11 - r);
+  }
+
+  function docValido(bruto) {
+    const d = String(bruto || '').replace(/[^0-9A-Za-z]/g, '').toUpperCase();
+    if (d.length === 11) {
+      /* Onze dígitos iguais passam na conta e são inválidos por regra. */
+      if (!/^\d{11}$/.test(d) || /^(\d)\1{10}$/.test(d)) return false;
+      return d[9]  === dvDoc(d.slice(0, 9),  [10, 9, 8, 7, 6, 5, 4, 3, 2])
+          && d[10] === dvDoc(d.slice(0, 10), [11, 10, 9, 8, 7, 6, 5, 4, 3, 2]);
+    }
+    if (d.length === 14) {
+      if (!/^[0-9A-Z]{12}\d{2}$/.test(d) || /^(.)\1{13}$/.test(d)) return false;
+      return d[12] === dvDoc(d.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2])
+          && d[13] === dvDoc(d.slice(0, 13), [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+    }
+    return false;
+  }
+
+  const campoDoc = () => raiz.querySelector('[name="documento"]');
+
   function ligarCupom() {
+    /* A máscara vive aqui e não em ligar(): o campo é do formulário,
+       mas quem precisa dele legível é o cupom. */
+    const doc = campoDoc();
+    doc?.addEventListener('input', () => { doc.value = mascaraDoc(doc.value); });
+
+    /* Trocou o CPF com cupom aplicado? Confere de novo. Sem isto a
+       prévia continuaria mostrando o resultado do documento anterior. */
+    let revalida;
+    doc?.addEventListener('input', () => {
+      if (!cupomDigitado.codigo) return;
+      clearTimeout(revalida);
+      revalida = setTimeout(() => {
+        Carrinho.usarCupom({ codigo: cupomDigitado.codigo, documento: doc.value.trim() });
+        desenhar();
+      }, 600);
+    });
+
     const bloco = raiz.querySelector('[data-cupom]');
     if (!bloco) return;
 
     const campos = bloco.querySelector('.cupom__campos');
     const cod    = bloco.querySelector('[data-cupom-codigo]');
-    const doc    = bloco.querySelector('[data-cupom-doc]');
 
     bloco.querySelector('[data-cupom-abrir]')?.addEventListener('click', ev => {
       cupomAberto = true;
@@ -478,34 +586,36 @@ const Carrinho = (() => {
       cod?.focus();
     });
 
-    /* Guarda a cada tecla: o redesenho pode vir de outro lugar, como
-       mudar a quantidade de um item. */
     cod?.addEventListener('input', () => { cupomDigitado.codigo = cod.value; });
-    doc?.addEventListener('input', () => {
-      doc.value = mascaraDoc(doc.value);
-      cupomDigitado.documento = doc.value;
-    });
 
     const aplicar = async () => {
-      cupomDigitado = { codigo: cod.value.trim(), documento: doc.value.trim() };
+      cupomDigitado.codigo = cod.value.trim();
       if (!cupomDigitado.codigo) { cod.focus(); return; }
-      Carrinho.usarCupom(cupomDigitado);
+
+      /* O CPF está do outro lado da tela. Se faltar, o aviso aparece no
+         cupom E o foco vai para o campo, senão a pessoa lê "informe o
+         CPF" sem saber onde ele está. */
+      const numero = (doc?.value || '').trim();
+      if (!docValido(numero)) {
+        doc?.focus();
+        doc?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
+      Carrinho.usarCupom({ codigo: cupomDigitado.codigo, documento: numero });
       await desenhar();
     };
 
     bloco.querySelector('[data-cupom-aplicar]')?.addEventListener('click', aplicar);
-    /* Enter no campo aplica. O bloco está dentro de um <form>? Não —
-       fica no resumo, então não há submit para atrapalhar. */
-    [cod, doc].forEach(i => i?.addEventListener('keydown', ev => {
+    [cod].forEach(i => i?.addEventListener('keydown', ev => {
       if (ev.key === 'Enter') { ev.preventDefault(); aplicar(); }
     }));
 
     bloco.querySelector('[data-cupom-tirar]')?.addEventListener('click', async () => {
-      cupomDigitado = { codigo: '', documento: cupomDigitado.documento };
+      cupomDigitado.codigo = '';
       Carrinho.usarCupom(null);
       await desenhar();
     });
   }
+
 
   function ligarFrete(c) {
     const bloco = raiz.querySelector('[data-cep-bloco]');
@@ -539,7 +649,11 @@ const Carrinho = (() => {
          pedido bate o valor e o estado, resolve aqui e não gasta
          consulta na conta.                                           */
       const uf = Preco.ufDoCep(cep);
-      if (uf && Preco.temFreteGratis(c.aPagar, uf)) {
+      /* Olha `total`, não `aPagar`: o frete grátis é decidido ANTES do
+         desconto. Com `aPagar` havia uma faixa perversa — entre R$ 1.500
+         e R$ 1.649 o cupom derrubava o pedido para fora da promoção, e o
+         cliente economizava R$ 150 para voltar a pagar frete. */
+      if (uf && Preco.temFreteGratis(c.total, uf)) {
         freteEscolhido = { nome: 'Frete grátis', preco: 0, prazo: null };
         alvo.innerHTML = `<p class="cart__frete-gratis">Frete grátis para ${esc(uf)}: o seu pedido passou de ${reais(CONFIG.venda.freteGratis.valor)}.</p>`;
         pintar();
@@ -615,6 +729,13 @@ const Carrinho = (() => {
     if (!nome)  return diz('Falta o seu nome.', true);
     if (!email) return diz('Informe o e-mail que vai receber a confirmação do pedido.', true);
 
+    /* O documento é obrigatório: ele vai na nota e é o que identifica a
+       primeira compra. A recusa aqui é só conveniência — o servidor
+       confere de novo e recusa igual. */
+    const documento = (d.get('documento') || '').toString().trim();
+    if (!documento) { campoDoc()?.focus(); return diz('Informe o CPF ou CNPJ. Ele vai na nota fiscal.', true); }
+    if (!docValido(documento)) { campoDoc()?.focus(); return diz('Esse CPF ou CNPJ não existe. Confira os números.', true); }
+
     const arquivo = form.querySelector('input[name="arte"]')?.files?.[0] || null;
     if (arquivo && arquivo.size > CONFIG.arte.tamanhoMaxMB * 1024 * 1024) {
       return diz(`A arte passa de ${CONFIG.arte.tamanhoMaxMB} MB. Mande por WhatsApp depois.`, true);
@@ -624,9 +745,9 @@ const Carrinho = (() => {
       cliente: {
         nome, zap, email,
         cidade: (d.get('cidade') || '').toString().trim(),
-        /* Vai cru e o painel decide o que guardar. Aqui ele não é
-           gravado em lugar nenhum: o carrinho não persiste documento. */
-        documento: cupomDigitado.documento || '',
+        /* Vai cru e o painel decide o que guardar: lá ele vira hash e o
+           número é descartado. O carrinho não persiste documento. */
+        documento: (d.get('documento') || '').toString().trim(),
       },
       tipo: tipoDoPedido(c.linhas),
       itens: c.linhas.map(l => ({

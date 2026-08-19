@@ -116,8 +116,13 @@ function ovr_meta_do_cupom(array $dados, int $post_id): array {
     $doc    = ovr_documento_normalizar(($dados['cliente']['documento'] ?? ''));
 
     $meta = [
-        /* O hash entra mesmo sem cupom: é ele que faz o PRÓXIMO pedido
-           desta pessoa ser reconhecido como repetido. */
+        /* O hash entra em TODO pedido, com cupom ou sem. É ele que faz o
+           próximo pedido desta pessoa ser reconhecido como repetido.
+
+           Enquanto o CPF só era pedido junto do cupom, havia um furo:
+           quem comprasse sem cupom não deixava rastro, e voltava depois
+           como primeira compra. Com o documento obrigatório no
+           formulário, o furo fecha sozinho. */
         '_ovr_doc_hash'  => $doc ? ovr_doc_hash($doc['numero']) : '',
         '_ovr_doc_tipo'  => $doc ? $doc['tipo'] : '',
         '_ovr_cupom'     => '',
@@ -130,6 +135,9 @@ function ovr_meta_do_cupom(array $dados, int $post_id): array {
     $meta['_ovr_desconto'] = max(0, (int) ($dados['desconto'] ?? 0));
 
     if (!$doc) {
+        /* Não deveria chegar aqui: o receber.php recusa o pedido sem
+           documento válido antes de gravar. Fica como rede, para o dia
+           em que alguém mexer na ordem das checagens. */
         $meta['_ovr_cupom_st'] = 'sem-doc';
         $meta['_ovr_desconto'] = 0;
     } elseif (ovr_ja_comprou($meta['_ovr_doc_hash'], $post_id)) {

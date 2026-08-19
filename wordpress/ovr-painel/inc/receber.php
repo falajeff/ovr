@@ -129,6 +129,12 @@ function ovr_receber_pedido(WP_REST_Request $req) {
     $email   = sanitize_email($cliente['email'] ?? '');
     $itens   = is_array($dados['itens'] ?? null) ? $dados['itens'] : [];
 
+    /* Documento obrigatório. Vale a mesma regra do nome: o navegador já
+       recusa, mas quem decide é aqui — validação só no cliente é
+       validação que se contorna com o inspetor aberto. */
+    $doc = ovr_documento_normalizar($cliente['documento'] ?? '');
+    if (!$doc) return ovr_erro('ovr_documento', 'Informe um CPF ou CNPJ válido.');
+
     if ($nome === '')                 return ovr_erro('ovr_nome', 'Falta o nome.');
     if ($zap === '' && $email === '') return ovr_erro('ovr_contato', 'Falta WhatsApp ou e-mail.');
     if (!$itens)                      return ovr_erro('ovr_itens', 'O carrinho está vazio.');
