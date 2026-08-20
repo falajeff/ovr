@@ -111,13 +111,22 @@ function ovr_tem_desconto_de_volume(array $produto): bool {
 /* O markup da faixa de 1 a 9 é menor que o padrão: na unidade o fornecedor
    não dá desconto e o preço ainda precisa caber no mercado.
 
-   Isso quebrou em oito peças do catálogo. Nelas o fornecedor cobra igual em
-   qualquer quantidade, então o custo não caía ao subir de 9 para 10 peças,
-   mas o markup subia de volta para o padrão. Resultado: o preço AUMENTAVA ao
-   passar de 9 para 10. Comprar mais saía mais caro.
+   Isso quebrou em oito peças do catálogo. Nelas o custo não caía ao subir de
+   9 para 10 peças, mas o markup subia de volta para o padrão. Resultado: o
+   preço AUMENTAVA ao passar de 9 para 10. Comprar mais saía mais caro.
 
    Daí a guarda: peça sem desconto de volume usa sempre o markup padrão, em
-   qualquer quantidade, e a escada fica plana em vez de invertida. */
+   qualquer quantidade, e a escada fica plana em vez de invertida.
+
+   Em 20/ago/2026 a CAUSA apareceu, e era outra: aquelas oito estavam
+   gravadas com um preço promocional avulso, sem a tabela por quantidade da
+   categoria delas. Não era o fornecedor cobrando igual em qualquer
+   quantidade — era o custo errado. Os dados foram corrigidos contra os
+   banners de categoria e hoje nenhuma peça cai nesta guarda.
+
+   Ela fica assim mesmo. É barata, e no dia em que uma peça nova entrar com
+   preço avulso ela evita que o catálogo volte a cobrar mais de quem compra
+   mais. Guarda que nunca dispara não é código morto: é código esperando. */
 function ovr_markup_de(array $faixa, ?array $produto): float {
     $m = ovr_cfg()['markup'];
     if ($produto && !ovr_tem_desconto_de_volume($produto)) return (float) $m['padrao'];

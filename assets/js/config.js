@@ -7,7 +7,7 @@ const CONFIG = {
 
   /* Suba este número quando trocar um mockup ou uma silhueta.
      É o que faz o navegador do cliente buscar a imagem nova.      */
-  versaoAssets: '55',
+  versaoAssets: '56',
 
   /* ---------- 1. MARCA -------------------------------------- */
   marca: {
