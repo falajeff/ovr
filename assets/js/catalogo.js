@@ -78,6 +78,14 @@
     filtroTipo ? u.searchParams.set('tipo', filtroTipo) : u.searchParams.delete('tipo');
     filtroGrupo ? u.searchParams.set('grupo', filtroGrupo) : u.searchParams.delete('grupo');
     modoLiso ? u.searchParams.set('liso', '1') : u.searchParams.delete('liso');
+    /* O cabeçalho promete estampa inclusa, e em modo liso isso seria
+       mentira na primeira linha da página. Troca junto com o resto. */
+    const selo = document.querySelector('[data-selo-modo]');
+    if (selo) selo.textContent = modoLiso ? 'Sem estampa' : 'Estampa inclusa';
+    const intro = document.querySelector('[data-intro-modo]');
+    if (intro) intro.textContent = modoLiso
+      ? 'Só a peça, sem estampa nenhuma. O preço cai conforme a quantidade do pedido, e você pode misturar com peças estampadas.'
+      : 'Comece pela base. Todo preço já inclui a estampa frente em DTF e cai conforme a quantidade do pedido.';
     history.replaceState(null, '', u);
   }
 
