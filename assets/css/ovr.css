@@ -918,6 +918,24 @@ ul, ol { list-style: none; }
   font-size: clamp(20px, 2.2vw, 26px); letter-spacing: -0.02em; text-transform: uppercase;
 }
 .grupo__titulo .t-meta { flex: none; }
+/* Subtítulo de caimento: infantil, feminina, plus size. Fica um degrau
+   abaixo do título do tipo — menor, sem caixa alta e com fio mais leve —
+   para a hierarquia se ler de relance, sem precisar comparar tamanhos. */
+.caimento__titulo {
+  display: flex; align-items: baseline; justify-content: space-between; gap: var(--e-16);
+  padding-bottom: 8px; margin-bottom: var(--e-16);
+  border-bottom: 1px solid color-mix(in srgb, var(--fio) 55%, transparent);
+}
+.caimento__titulo h3 {
+  font-family: var(--fonte-titulo); font-weight: 700;
+  font-size: clamp(14px, 1.3vw, 16px); letter-spacing: 0.02em;
+}
+.caimento__titulo .t-meta { flex: none; }
+/* O primeiro caimento cola no título do tipo; os seguintes respiram. */
+.grade-produtos--agrupada > .grupo__titulo + .caimento__titulo { margin-top: 0; }
+.grade-produtos--agrupada > .grupo__grade + .caimento__titulo { margin-top: var(--e-32); }
+.grade-produtos--agrupada > .caimento__titulo + .grupo__grade { margin-top: 0; }
+
 /* a divisória vem colada no bloco que ela abre, não solta entre os dois */
 .grade-produtos--agrupada > .grupo__titulo + .grupo__grade { margin-top: 0; }
 .grade-produtos--agrupada > .grupo__titulo:not(:first-child) { margin-top: var(--e-32); }

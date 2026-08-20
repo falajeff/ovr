@@ -45,19 +45,63 @@
      Aí a grade quebra em blocos por tipo, cada um com sua divisória.
      Com um filtro ativo não faz sentido — todas as peças são do mesmo
      tipo e a divisória seria uma faixa só, repetindo o chip aceso.     */
+  /* Dentro de um tipo, o que separa uma peça da outra para quem compra
+     não é a cor: é o caimento. "Básica" sozinha junta 54 peças e mistura
+     infantil, feminina e plus size numa lista só, e o cliente rola sem
+     achar. Aqui cada tipo se divide pelo caimento.
+
+     A ordem importa: uma peça pode ser feminina E plus size, e cai na
+     PRIMEIRA regra que casar. Por isso "Feminina plus size" vem antes
+     das duas sozinhas — se viesse depois, essas seis peças sumiriam
+     dentro de um dos dois blocos e a mulher que precisa de plus size
+     teria de adivinhar em qual. Bloco nomeado pelo que ele contém não
+     esconde nada. */
+  const CAIMENTOS = [
+    { rotulo: 'Infantil',            cabe: g => g.includes('Infantil') },
+    { rotulo: 'Feminina plus size',  cabe: g => g.includes('Feminino') && g.includes('Plus Size') },
+    { rotulo: 'Feminina',            cabe: g => g.includes('Feminino') },
+    { rotulo: 'Plus size',           cabe: g => g.includes('Plus Size') },
+    { rotulo: 'Adulto',              cabe: () => true },
+  ];
+  const caimentoDe = p => CAIMENTOS.find(c => c.cabe(p.grupos || [])).rotulo;
+
   function desenharAgrupado(l) {
     const ordemTipos = [...new Set(l.map(p => p.tipo))]
       .map(t => ({ t, n: l.filter(p => p.tipo === t).length }))
       .sort((a, b) => b.n - a.n || a.t.localeCompare(b.t, 'pt-BR'));
 
-    grade.innerHTML = ordemTipos.map(({ t, n }) => `
+    const conta = n => `${n} ${n === 1 ? 'peça' : 'peças'}`;
+
+    grade.innerHTML = ordemTipos.map(({ t, n }) => {
+      const doTipo = l.filter(p => p.tipo === t);
+      /* Tipo com um caimento só não ganha subtítulo nenhum: repetir
+         "Adulto" embaixo de "Bermuda" é ruído, não orientação. */
+      const blocos = CAIMENTOS
+        .map(c => ({ rotulo: c.rotulo, pecas: doTipo.filter(p => caimentoDe(p) === c.rotulo) }))
+        .filter(b => b.pecas.length);
+
+      const cabeca = `
       <div class="grupo__titulo">
         <h2>${esc(t)}</h2>
-        <span class="t-meta">${n} ${n === 1 ? 'peça' : 'peças'}</span>
+        <span class="t-meta">${conta(n)}</span>
+      </div>`;
+
+      if (blocos.length === 1) {
+        return cabeca + `
+      <div class="grade-produtos grupo__grade">
+        ${doTipo.map(cartao).join('')}
+      </div>`;
+      }
+
+      return cabeca + blocos.map(b => `
+      <div class="caimento__titulo">
+        <h3>${esc(b.rotulo)}</h3>
+        <span class="t-meta">${conta(b.pecas.length)}</span>
       </div>
       <div class="grade-produtos grupo__grade">
-        ${l.filter(p => p.tipo === t).map(cartao).join('')}
+        ${b.pecas.map(cartao).join('')}
       </div>`).join('');
+    }).join('');
   }
 
   function desenhar() {
