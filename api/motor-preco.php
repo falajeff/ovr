@@ -124,12 +124,31 @@ function ovr_markup_de(array $faixa, ?array $produto): float {
     return (float) ($m['porFaixa'][(string) $faixa['min']] ?? $m['padrao']);
 }
 
+/* Markup da peça lisa. Não tem escada por faixa: o que justifica o markup
+   menor da faixa de varejo na peça estampada é o desconto do fornecedor, e
+   aqui o markup já nasce baixo. Um degrau a mais só inverteria a escada,
+   que é o bug que a guarda acima existe para evitar. */
+function ovr_markup_liso(): float {
+    $m = ovr_cfg()['markup'];
+    return (float) ($m['liso'] ?? $m['padrao']);
+}
+
+/* Sem área de estampa, a peça é lisa — e peça lisa tem markup próprio.
+   A condição é a área e não uma bandeira à parte porque é a mesma coisa
+   dita duas vezes: se não há o que imprimir, não há impressão para cobrar.
+
+   Isto não muda preço nenhum por acidente. Os três chamadores (preco.php,
+   carrinho.php e gerar-precos.php) já trocam lista vazia pela medida
+   padrão da frente antes de chegar aqui, então lista vazia só acontece
+   quando alguém pede peça lisa de propósito. */
 function ovr_unitario(array $produto, int $qtd, array $posicoes): float {
-    $faixa = ovr_faixa_de($qtd);
     $custoPeca = ovr_custo_da_peca($produto, $qtd);
     $estampa = ovr_custo_estampa($qtd, $posicoes);
     $frete = (ovr_cfg()['freteFornecedor']['repassarNoPreco'] ?? false) ? ovr_frete_por_peca($qtd) : 0.0;
-    return ovr_arredondar(($custoPeca + $estampa + $frete) * ovr_markup_de($faixa, $produto));
+    $markup = $estampa > 0
+        ? ovr_markup_de(ovr_faixa_de($qtd), $produto)
+        : ovr_markup_liso();
+    return ovr_arredondar(($custoPeca + $estampa + $frete) * $markup);
 }
 
 function ovr_escada(array $produto, array $posicoes, ?int $qtdAtual = null): array {

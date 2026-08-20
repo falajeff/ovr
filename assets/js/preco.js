@@ -29,7 +29,17 @@ const Preco = (() => {
     return TABELA;
   }
   const pronto = () => TABELA !== null;
-  const doProduto = produto => (TABELA?.produtos || {})[String(produto?.id)] || null;
+  /* Lista de posições vazia quer dizer PEÇA LISA, aqui e no servidor. É a
+     mesma convenção nos dois lados: sem o que imprimir, não há impressão
+     para cobrar, e o markup é outro. Quem simplesmente não passa posições
+     continua caindo na medida padrão da frente, como sempre. */
+  const ehLiso = posicoes => Array.isArray(posicoes) && posicoes.length === 0;
+
+  function doProduto(produto, liso = false) {
+    const t = (TABELA?.produtos || {})[String(produto?.id)] || null;
+    if (!t) return null;
+    return liso ? (t.liso || null) : t;
+  }
 
   /* --------- faixa em que uma quantidade cai ----------------------- */
   /* max null é "sem teto": a última faixa era Infinity em JavaScript e o
@@ -61,12 +71,12 @@ const Preco = (() => {
   }
 
   /* --------- consultas síncronas, na medida padrão ----------------- */
-  function aPartirDe(produto) {
-    return doProduto(produto)?.aPartirDe ?? 0;
+  function aPartirDe(produto, liso = false) {
+    return doProduto(produto, liso)?.aPartirDe ?? 0;
   }
 
   function escada(produto, posicoes = ['frente'], qtdAtual = null) {
-    const t = doProduto(produto);
+    const t = doProduto(produto, ehLiso(posicoes));
     if (!t) return [];
     return t.escada.map(l => ({
       rotulo: l.rotulo, min: l.min, max: l.max,
@@ -76,8 +86,8 @@ const Preco = (() => {
     }));
   }
 
-  function unitario(produto, qtd = 1) {
-    const linhas = escada(produto);
+  function unitario(produto, qtd = 1, posicoes = ['frente']) {
+    const linhas = escada(produto, posicoes);
     if (!linhas.length) return 0;
     const l = linhas.find(x => qtd >= x.min && qtd <= teto(x)) || linhas[linhas.length - 1];
     return l.valor;
@@ -85,15 +95,23 @@ const Preco = (() => {
 
   /* Só o que a página mostra: faixa, unitário e total. Custo, markup e
      margem não existem mais deste lado.                               */
-  function detalhe(produto, qtd = 1) {
-    const unit = unitario(produto, qtd);
+  function detalhe(produto, qtd = 1, posicoes = ['frente']) {
+    const unit = unitario(produto, qtd, posicoes);
     return { faixa: faixaDe(Math.max(1, qtd)), qtd, unitario: unit, total: +(unit * qtd).toFixed(2) };
   }
 
   /* --------- consulta ao servidor, para medida fora do padrão ------ */
   async function consultar(produto, qtd = 1, posicoes = ['frente']) {
-    if (naMedidaPadrao(posicoes)) {
-      return { ...detalhe(produto, qtd), escada: escada(produto, posicoes, qtd), aPartirDe: aPartirDe(produto) };
+    /* Peça lisa não tem medida para variar, então nunca precisa de rede:
+       a escada dela já veio no precos.json ao lado da estampada. */
+    if (ehLiso(posicoes) || naMedidaPadrao(posicoes)) {
+      const liso = ehLiso(posicoes);
+      return {
+        ...detalhe(produto, qtd, posicoes),
+        escada: escada(produto, posicoes, qtd),
+        aPartirDe: aPartirDe(produto, liso),
+        liso,
+      };
     }
     const medidas = posicoes
       .map(p => (typeof p === 'string' ? estampas[p] : p))
@@ -118,7 +136,11 @@ const Preco = (() => {
   async function consultarCarrinho(itens = [], cupom = null) {
     const corpo = itens.map(i => ({
       tipo: i.tipo, id: i.id ?? null, qtd: +i.qtd || 0,
-      unitario: i.tipo === 'dtf' ? null : (+i.unitario || 0),
+        /* Peça da casa, estampada ou lisa, tem o preço refeito no servidor.
+           Mandar número daqui seria deixar o preço editável no inspetor.
+           Filme, arte e DTG mandam porque a conta deles é da página, e lá
+           o servidor só limita o que chega. */
+        unitario: (i.tipo === 'dtf' || i.tipo === 'peca') ? null : (+i.unitario || 0),
       posicoes: (i.posicoes || []).map(p => {
         const e = typeof p === 'string' ? estampas[p] : p;
         return e ? { larg: e.larg, alt: e.alt } : null;

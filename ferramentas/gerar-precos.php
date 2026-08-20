@@ -82,13 +82,22 @@ foreach ($produtos as $p) {
         $publico[] = $limpo;
     }
 
-    $escada = ovr_escada($p, $pos);
+    $enxugar = fn(array $escada) => array_map(fn($l) => [
+        'rotulo' => $l['rotulo'], 'min' => $l['min'], 'max' => $l['max'],
+        'valor' => $l['valor'], 'economia' => $l['economia'],
+    ], $escada);
+
     $precos[(string) $p['id']] = [
         'aPartirDe' => ovr_a_partir_de($p, $pos),
-        'escada' => array_map(fn($l) => [
-            'rotulo' => $l['rotulo'], 'min' => $l['min'], 'max' => $l['max'],
-            'valor' => $l['valor'], 'economia' => $l['economia'],
-        ], $escada),
+        'escada' => $enxugar(ovr_escada($p, $pos)),
+        /* A mesma peça sem estampa. Lista de posições vazia é o que diz ao
+           motor que é peça lisa, e lá ele troca o markup. Vem pré-calculado
+           pelo mesmo motivo do estampado: a vitrine mostra preço sem tocar
+           a rede, e a conta continua sendo só do servidor. */
+        'liso' => [
+            'aPartirDe' => ovr_a_partir_de($p, []),
+            'escada' => $enxugar(ovr_escada($p, [])),
+        ],
     ];
 }
 

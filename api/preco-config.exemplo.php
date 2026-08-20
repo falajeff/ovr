@@ -35,6 +35,8 @@ return [
     /* A faixa de varejo tem markup menor, e isso só se paga quando o
        fornecedor dá desconto por volume. Ver o comentário em preco.js. */
     'porFaixa' => ['1' => 1.8],
+    /* Peça lisa: markup menor, porque não consome filme nem prensa. */
+    'liso' => 1.6,
   ],
   'venda' => ['pedidoMinimo' => 1, 'arredondar' => 'exato',
               'freteGratis' => ['valor' => 1500.00, 'estados' => ['SP','PR','RJ','SC']]],

@@ -32,8 +32,15 @@ function ovr_teto_por_tipo(string $tipo): float {
 }
 
 $cfg = ovr_cfg();
+/* Peça estampada e peça lisa saem do mesmo pedido ao fornecedor, então o
+   desconto por volume dele olha as duas somadas. Quem leva 5 estampadas e
+   5 lisas comprou 10 peças, e é isso que decide a faixa. Contar separado
+   inventaria uma barreira que não existe do outro lado. */
+const OVR_TIPOS_DA_CASA = ['dtf', 'peca'];
 $totalPecas = 0;
-foreach ($itens as $i) if (($i['tipo'] ?? '') === 'dtf') $totalPecas += max(0, (int) ($i['qtd'] ?? 0));
+foreach ($itens as $i) {
+    if (in_array($i['tipo'] ?? '', OVR_TIPOS_DA_CASA, true)) $totalPecas += max(0, (int) ($i['qtd'] ?? 0));
+}
 
 $faixa = ovr_faixa_de(max(1, $totalPecas));
 $linhas = []; $soma = 0.0;
@@ -42,14 +49,21 @@ foreach ($itens as $i) {
        sete bilhões de reais — número que não é venda, é lixo no painel. */
     $qtd = min(max(0, (int) ($i['qtd'] ?? 0)), OVR_QTD_MAX_ITEM);
     $unit = 0.0;
-    if (($i['tipo'] ?? '') === 'dtf') {
+    $tipo = $i['tipo'] ?? '';
+    if (in_array($tipo, OVR_TIPOS_DA_CASA, true)) {
         $produto = ovr_produto((int) ($i['id'] ?? 0));
         if ($produto) {
+            /* Peça lisa: lista de posições vazia, e o motor troca o markup.
+               Aqui a lista é montada pelo TIPO e não pelo que o navegador
+               mandou, senão bastaria omitir as posições numa linha `dtf`
+               para pagar preço de peça lisa e receber peça estampada. */
             $pos = [];
-            foreach (($i['posicoes'] ?? []) as $p) {
-                if (isset($p['larg'], $p['alt'])) $pos[] = ['larg' => (float) $p['larg'], 'alt' => (float) $p['alt']];
+            if ($tipo === 'dtf') {
+                foreach (($i['posicoes'] ?? []) as $p) {
+                    if (isset($p['larg'], $p['alt'])) $pos[] = ['larg' => (float) $p['larg'], 'alt' => (float) $p['alt']];
+                }
+                if (!$pos) $pos = [$cfg['estampas']['frente']];
             }
-            if (!$pos) $pos = [$cfg['estampas']['frente']];
             /* a quantidade que manda no preço é a do pedido, não a do item */
             $unit = ovr_unitario($produto, max(1, $totalPecas), $pos);
         }

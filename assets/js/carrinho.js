@@ -103,7 +103,8 @@ const Carrinho = (() => {
   }
 
   /* ------------------------ preço do pedido ---------------------- */
-  /* Precisa do catálogo para saber o custo de cada peça hoje. */
+  /* Precisa do catálogo para saber se a peça ainda existe e como ela se
+     chama. Custo não passa por aqui: quem sabe o preço é o servidor. */
   let catalogo = null;
   async function comCatalogo() {
     if (catalogo) return catalogo;
@@ -124,7 +125,10 @@ const Carrinho = (() => {
   async function calcular() {
     const cat = await comCatalogo();
     const itens = ler().map(i => {
-      if (i.tipo !== 'dtf') return i;
+      /* Peça lisa vem do mesmo catálogo que a estampada, então passa pela
+         mesma checagem: peça retirada do catálogo não pode continuar
+         vendável só porque foi pedida sem estampa. */
+      if (i.tipo !== 'dtf' && i.tipo !== 'peca') return i;
       const produto = cat.find(p => p.id === i.id);
       /* Peça que saiu do catálogo não pode ser vendida por um preço
          inventado: marca como indisponível e o carrinho avisa.       */
@@ -373,7 +377,7 @@ const Carrinho = (() => {
         <div class="cart__desc">
           <strong>${esc(l.nome)}</strong>
           ${l.cor ? `<span class="t-meta">${esc(l.cor)}</span>` : ''}
-          ${l.estampa ? `<span class="t-meta">Estampa: ${esc(l.estampa)}</span>` : ''}
+          ${l.estampa ? `<span class="t-meta">${l.tipo === 'peca' ? esc(l.estampa) : 'Estampa: ' + esc(l.estampa)}</span>` : ''}
           ${l.grade ? `<span class="t-meta">${Object.entries(l.grade).filter(([, n]) => n > 0).map(([t, n]) => `${esc(t)} ×${n}`).join(' · ')}</span>` : ''}
           ${l.indisponivel ? `<span class="cart__alerta">Esta peça saiu do catálogo. Remova para fechar o pedido.</span>` : ''}
         </div>
@@ -396,7 +400,7 @@ const Carrinho = (() => {
       <div class="envelope cart">
         <h1 class="t-titulo" style="font-size:clamp(28px,4vw,44px);margin-bottom:6px">Seu pedido</h1>
         <p class="t-corpo" style="margin-bottom:26px">
-          ${c.pecasDTF ? `${c.pecasDTF} ${c.pecasDTF === 1 ? 'peça' : 'peças'} em DTF. O desconto olha o pedido inteiro, não cada modelo.` : 'Confira os itens antes de enviar.'}
+          ${c.pecasDTF ? `${c.pecasDTF} ${c.pecasDTF === 1 ? 'peça' : 'peças'} no pedido${c.linhas.some(l => l.tipo === 'dtf') ? ', estampadas em DTF' : ''}${c.linhas.some(l => l.tipo === 'peca') ? (c.linhas.some(l => l.tipo === 'dtf') ? ' e sem estampa' : ', sem estampa') : ''}. O desconto olha o pedido inteiro, não cada modelo.` : 'Confira os itens antes de enviar.'}
         </p>
 
         <div class="cart__lista">${linhas.map(linha).join('')}</div>

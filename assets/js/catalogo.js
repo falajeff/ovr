@@ -8,6 +8,11 @@
   let todos = [];
   let filtroTipo = null;
   let filtroGrupo = null;
+  /* Sem estampa é MODO, não filtro: as 151 peças existem nas duas formas,
+     então não há o que filtrar — o que muda é qual preço a vitrine mostra
+     e para onde o cartão leva. Vive na URL junto com os filtros, para o
+     link continuar compartilhável. */
+  let modoLiso = false;
 
   const grade   = document.querySelector('[data-grade]');
   const barra   = document.querySelector('[data-filtros]');
@@ -16,11 +21,11 @@
   const ordenar = document.querySelector('[data-ordenar]');
 
   const cartao = p => `
-    <a class="card" href="produto.html?id=${+p.id}">
+    <a class="card" href="produto.html?id=${+p.id}${modoLiso ? '&liso=1' : ''}">
       <div class="poco">${pecaHTML(p)}</div>
       <span class="card__nome">${esc(p.nome)}</span>
       <span class="t-meta">${esc(p.tipo)} · ${esc(p.cor)}</span>
-      <span class="card__preco">A partir de ${reais(Preco.aPartirDe(p))}<svg viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M4 10L10 4M10 4H4.8M10 4V9.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="card__preco">A partir de ${reais(Preco.aPartirDe(p, modoLiso))}<svg viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M4 10L10 4M10 4H4.8M10 4V9.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
     </a>`;
 
   function filtrados() {
@@ -28,7 +33,7 @@
     if (filtroTipo)  l = l.filter(p => p.tipo === filtroTipo);
     if (filtroGrupo) l = l.filter(p => p.grupos.includes(filtroGrupo));
     const modo = ordenar?.value || 'preco-asc';
-    const chave = p => Preco.aPartirDe(p);
+    const chave = p => Preco.aPartirDe(p, modoLiso);
     if (modo === 'preco-asc')  l = [...l].sort((a, b) => chave(a) - chave(b));
     if (modo === 'preco-desc') l = [...l].sort((a, b) => chave(b) - chave(a));
     if (modo === 'nome')       l = [...l].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
@@ -72,6 +77,7 @@
     const u = new URL(location.href);
     filtroTipo ? u.searchParams.set('tipo', filtroTipo) : u.searchParams.delete('tipo');
     filtroGrupo ? u.searchParams.set('grupo', filtroGrupo) : u.searchParams.delete('grupo');
+    modoLiso ? u.searchParams.set('liso', '1') : u.searchParams.delete('liso');
     history.replaceState(null, '', u);
   }
 
@@ -176,6 +182,16 @@
     const q = new URLSearchParams(location.search);
     filtroTipo = q.get('tipo');
     filtroGrupo = q.get('grupo');
+    modoLiso = q.get('liso') === '1';
+    const btLiso = document.querySelector('[data-modo-liso]');
+    if (btLiso) {
+      const pintar = () => {
+        btLiso.setAttribute('aria-pressed', String(modoLiso));
+        btLiso.textContent = modoLiso ? 'Vendo sem estampa' : 'Ver sem estampa';
+      };
+      pintar();
+      btLiso.addEventListener('click', () => { modoLiso = !modoLiso; pintar(); desenhar(); });
+    }
 
     montarFiltros();
     iniciarRolagemLateral();

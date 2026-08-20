@@ -23,7 +23,7 @@
     Math.min(Number.isFinite(max) ? max : Infinity, Math.max(min, v));
 
   /* "Frente 28×30 cm" ou "Frente 28×30 e costas 30×30 cm" */
-  const descreverEstampa = () => posicoes
+  const descreverEstampa = () => posicoes.length === 0 ? 'Sem estampa' : posicoes
     .map(p => `${p.rotulo.toLowerCase()} ${p.larg}×${p.alt} cm`)
     .join(' e ')
     .replace(/^./, c => c.toUpperCase());
@@ -83,13 +83,14 @@
           <div class="campo">
             <label>Onde vai a estampa</label>
             <div class="opcoes">
-              <button class="opcao" data-pos="frente" aria-pressed="true">Frente</button>
-              <button class="opcao" data-pos="costas" aria-pressed="false">Costas</button>
-              <button class="opcao" data-pos="frente-costas" aria-pressed="false">Frente e costas</button>
+              <button class="opcao" data-pos="frente" aria-pressed="${posicoes.length === 1 && posicoes[0].id === 'frente'}">Frente</button>
+              <button class="opcao" data-pos="costas" aria-pressed="${posicoes.length === 1 && posicoes[0].id === 'costas'}">Costas</button>
+              <button class="opcao" data-pos="frente-costas" aria-pressed="${posicoes.length === 2}">Frente e costas</button>
+              <button class="opcao" data-pos="sem" aria-pressed="${posicoes.length === 0}">Sem estampa</button>
             </div>
           </div>
 
-          <div class="campo">
+          <div class="campo" data-campo-medidas>
             <label>Tamanho da estampa</label>
             <div data-medidas></div>
             <p class="t-meta" data-limite></p>
@@ -156,7 +157,11 @@
       </section>`;
 
     raiz.querySelectorAll('[data-pos]').forEach(b => b.addEventListener('click', () => {
-      const querem = b.dataset.pos === 'frente-costas' ? ['frente', 'costas'] : [b.dataset.pos];
+      /* Lista vazia é como se diz "peça lisa" ao motor de preço, dos dois
+         lados. Aqui o cliente leva só a peça, sem estampa nenhuma. */
+      const querem = b.dataset.pos === 'sem' ? []
+                   : b.dataset.pos === 'frente-costas' ? ['frente', 'costas']
+                   : [b.dataset.pos];
       /* preserva a medida que o cliente já ajustou nas posições que ficam */
       posicoes = querem.map(id => posicoes.find(p => p.id === id) || medidaPadrao(id));
       raiz.querySelectorAll('[data-pos]').forEach(o => o.setAttribute('aria-pressed', String(o === b)));
@@ -201,7 +206,11 @@
 
     const grade = Object.fromEntries(Object.entries(quantidades).filter(([, n]) => n > 0));
     const r = Carrinho.adicionar({
-      tipo: 'dtf',
+      /* `peca` é a linha de peça lisa. Tipo próprio, e não `dtf` sem
+         posições, para o servidor não precisar adivinhar a intenção: lá
+         `dtf` sem posição é cobrado como estampa frontal, e é isso que
+         protege o preço de quem esquece de mandar a medida. */
+      tipo: posicoes.length ? 'dtf' : 'peca',
       id: produto.id,
       nome: produto.nome,
       cor: produto.cor,
@@ -229,6 +238,11 @@
   function desenharMedidas() {
     const caixa = raiz.querySelector('[data-medidas]');
     if (!caixa) return;
+    /* Peça lisa não tem tamanho de estampa para escolher. O campo inteiro
+       sai da tela, em vez de ficar pedindo número que não existe. */
+    const campo = raiz.querySelector('[data-campo-medidas]');
+    if (campo) campo.hidden = posicoes.length === 0;
+    if (posicoes.length === 0) { caixa.innerHTML = ''; return; }
     const maxAlt = alturaMaxima();
     limiteAltAnterior = maxAlt;
 
@@ -329,8 +343,11 @@
     if (meu !== consultaAtual) return;   // chegou tarde, já tem consulta mais nova
 
     $('[data-unitario]').textContent = qtd ? reais(d.unitario) : reais(avulso.unitario);
+    const semEstampa = posicoes.length === 0;
     $('[data-explica]').textContent = qtd
-      ? `Valor por peça na faixa de ${d.faixa.rotulo}. Estampa em ${descreverEstampa().toLowerCase()}.`
+      ? (semEstampa
+          ? `Valor por peça na faixa de ${d.faixa.rotulo}. Só a peça, sem estampa.`
+          : `Valor por peça na faixa de ${d.faixa.rotulo}. Estampa em ${descreverEstampa().toLowerCase()}.`)
       : `Preço da peça avulsa. Monte a grade abaixo e ele cai conforme a quantidade.`;
     $('[data-qtd]').textContent = qtd;
     $('[data-faixa]').textContent = qtd ? d.faixa.rotulo : '–';
@@ -465,7 +482,12 @@
   /* ------------------------- arranque --------------------------- */
   document.addEventListener('DOMContentLoaded', async () => {
     const itens = await carregarCatalogo();
-    const id = +new URLSearchParams(location.search).get('id');
+    const q = new URLSearchParams(location.search);
+    const id = +q.get('id');
+    /* liso=1 vem do catálogo em modo sem estampa. Chega antes de montar()
+       para a página já abrir com a opção certa acesa, em vez de abrir
+       estampada e piscar para lisa. */
+    if (q.get('liso') === '1') posicoes = [];
     produto = itens.find(p => p.id === id) || itens[0];
     if (!produto) {
       raiz.innerHTML = `<p class="envelope t-corpo" style="padding-block:80px">Peça não encontrada. <a href="catalogo.html" style="text-decoration:underline">Voltar ao catálogo</a>.</p>`;

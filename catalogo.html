@@ -101,13 +101,19 @@
     <div class="envelope">
       <div class="linha" style="justify-content:space-between; margin-bottom:24px">
         <p class="t-meta" data-contagem></p>
-        <label class="t-meta linha ordenacao" style="gap:8px">Ordenar
-          <select data-ordenar style="border:1px solid var(--fio); background:#fff; padding:8px 10px; font-size:11px; letter-spacing:.06em; text-transform:uppercase">
-            <option value="preco-asc">Menor preço</option>
-            <option value="preco-desc">Maior preço</option>
-            <option value="nome">Nome</option>
-          </select>
-        </label>
+        <div class="linha" style="gap:16px">
+          <!-- Alterna a vitrine entre peça estampada e peça lisa. Não é um
+               filtro: as peças são as mesmas, muda o preço mostrado e o
+               modo com que a página da peça abre. -->
+          <button class="chip" data-modo-liso aria-pressed="false">Ver sem estampa</button>
+          <label class="t-meta linha ordenacao" style="gap:8px">Ordenar
+            <select data-ordenar style="border:1px solid var(--fio); background:#fff; padding:8px 10px; font-size:11px; letter-spacing:.06em; text-transform:uppercase">
+              <option value="preco-asc">Menor preço</option>
+              <option value="preco-desc">Maior preço</option>
+              <option value="nome">Nome</option>
+            </select>
+          </label>
+        </div>
       </div>
       <div class="grade-produtos" data-grade><p class="t-corpo">Carregando…</p></div>
       <p class="t-corpo" data-vazio hidden style="padding-block:48px">Nenhuma peça nesse filtro. <button class="btn btn--linha" style="margin-left:12px" data-limpar>Ver todas</button></p>

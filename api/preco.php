@@ -26,7 +26,13 @@ if (!empty($_GET['posicoes'])) {
         }
     }
 }
-if (!$posicoes) $posicoes = [ovr_cfg()['estampas']['frente']];
+/* liso=1 pede a peça sem estampa. É a única forma de chegar aqui com
+   lista vazia, e a lista vazia é o que faz o motor usar o markup da peça
+   lisa. Sem a bandeira, ausência de posições continua significando "usa a
+   medida padrão", que é o que a vitrine sempre quis dizer. */
+$liso = !empty($_GET['liso']);
+if ($liso)            $posicoes = [];
+elseif (!$posicoes)   $posicoes = [ovr_cfg()['estampas']['frente']];
 
 $faixa = ovr_faixa_de($qtd);
 $unit  = ovr_unitario($produto, $qtd, $posicoes);
@@ -34,6 +40,7 @@ $unit  = ovr_unitario($produto, $qtd, $posicoes);
 echo json_encode([
     'id' => $id,
     'qtd' => $qtd,
+    'liso' => $liso,
     'unitario' => $unit,
     'total' => round($unit * $qtd, 2),
     'faixa' => ['rotulo' => $faixa['rotulo'], 'min' => $faixa['min'], 'max' => $faixa['max']],
