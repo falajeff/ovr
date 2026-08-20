@@ -56,6 +56,19 @@ $foraDoSite = ['Outlet'];
    expedição que o cliente nunca compra aqui. */
 $tiposForaDoSite = ['Acessório'];
 
+/* Peças que o fornecedor deixou de ter. Sair do catálogo dele não apaga a
+   peça daqui sozinho: o catalogo.json só é reconstruído quando a raspagem
+   roda, e até lá ela continuaria à venda. Lista explícita, com o motivo,
+   porque decisão de negócio não pode viver como linha apagada em silêncio
+   — apagada, ela volta na próxima raspagem se o fornecedor relistar.
+
+   Confirmado com o Jefferson em 20/ago/2026:
+     127, 128, 130  Plus Size com Elastano — não existe mais, nem masculina
+                    nem feminina. A Feminina Lisa com Elastano (138) é de
+                    outra categoria e continua à venda.
+     55             Feminina Lisa Canelada — não existe mais. */
+$idsForaDoSite = [127, 128, 130, 55];
+
 /* O custo começa do que já existia, não do zero. Reconstruir a partir do
    catálogo público apagava em silêncio toda peça que tinha sido excluída
    numa rodada anterior: ela sai do público, some da fonte, e na execução
@@ -77,7 +90,8 @@ foreach ($produtos as $p) {
     $limpo = $p;
     unset($limpo['precoBase'], $limpo['faixas'], $limpo['origem']);   // dinheiro e fornecedor saem do público
     $fora = array_intersect($p['grupos'] ?? [], $foraDoSite)
-         || in_array($p['tipo'] ?? '', $tiposForaDoSite, true);
+         || in_array($p['tipo'] ?? '', $tiposForaDoSite, true)
+         || in_array((int) $p['id'], $idsForaDoSite, true);
     if (!$fora) {
         $publico[] = $limpo;
     }
@@ -86,6 +100,8 @@ foreach ($produtos as $p) {
         'rotulo' => $l['rotulo'], 'min' => $l['min'], 'max' => $l['max'],
         'valor' => $l['valor'], 'economia' => $l['economia'],
     ], $escada);
+
+    if ($fora) continue;   // sem vitrine, sem preço para calcular
 
     $precos[(string) $p['id']] = [
         'aPartirDe' => ovr_a_partir_de($p, $pos),
