@@ -3,7 +3,7 @@ Theme Name: OVR Blog
 Theme URI: https://ovrcamisetas.com.br
 Author: OVR
 Description: Tema do blog da OVR. Usa os mesmos tokens do site principal, sem comentário e sem plugin de layout. Feito para ser magro: quanto menos código roda, menos porta existe.
-Version: 1.4.1
+Version: 1.4.3
 Requires at least: 6.0
 Requires PHP: 7.4
 License: Uso próprio da marca OVR
@@ -20,7 +20,11 @@ Tags: blog, editorial, streetwear
   align-items: center; margin-bottom: clamp(48px, 6vw, 80px);
   padding-bottom: clamp(48px, 6vw, 80px); border-bottom: 1px solid var(--fio);
 }
-.destaque__media { display: block; overflow: hidden; background: var(--bg-surface); aspect-ratio: 4/3; }
+/* 16/9, e não 4/3: é a proporção em que a imagem destacada é registrada
+   (set_post_thumbnail_size 1200×675). Com 4/3 o object-fit comia 150px de
+   cada lateral, e capa com texto perdia o começo das frases. Declarar um
+   tamanho e exibir em outro é pedir para cortar. */
+.destaque__media { display: block; overflow: hidden; background: var(--bg-surface); aspect-ratio: 16/9; }
 .destaque__media img { width: 100%; height: 100%; object-fit: cover; transition: transform .5s cubic-bezier(.2,.6,.2,1); }
 .destaque:hover .destaque__media img { transform: scale(1.03); }
 .destaque__texto { display: flex; flex-direction: column; gap: var(--e-16); align-items: flex-start; }
@@ -54,7 +58,8 @@ Tags: blog, editorial, streetwear
 .cartao-post__ler svg { width: 13px; height: 13px; flex: none; transition: transform .18s; }
 .cartao-post:hover .cartao-post__ler svg { transform: translate(3px, -3px); }
 .cartao-post:hover .cartao-post__ler span { box-shadow: inset 0 -6px 0 var(--accent); }
-.cartao-post__media { display: block; overflow: hidden; background: var(--bg-surface); aspect-ratio: 3/2; margin-bottom: 8px; }
+/* mesma razão do destaque: a imagem é 16/9 */
+.cartao-post__media { display: block; overflow: hidden; background: var(--bg-surface); aspect-ratio: 16/9; margin-bottom: 8px; }
 .cartao-post__media img { width: 100%; height: 100%; object-fit: cover; transition: transform .5s cubic-bezier(.2,.6,.2,1); }
 .cartao-post:hover .cartao-post__media img { transform: scale(1.04); }
 .cartao-post__titulo {
@@ -64,8 +69,15 @@ Tags: blog, editorial, streetwear
 .cartao-post__titulo a:hover { text-decoration: underline; text-underline-offset: 4px; }
 
 /* ---------------------------- a capa -------------------------- */
-.capa-post { background: var(--bg-surface); }
-.capa-post img { width: 100%; max-height: 62vh; object-fit: cover; }
+/* Fundo escuro, e não o bege da superfície: as sete capas do blog são um
+   conjunto e compartilham o mesmo fundo #0a0a0a. Com `contain` logo abaixo,
+   a tarja que aparece em tela baixa some dentro da capa em vez de virar
+   uma moldura bege. Capa nova precisa nascer nesse mesmo fundo. */
+.capa-post { background: #0a0a0a; }
+/* `contain` no lugar de `cover`: com cover, uma tela baixa cortava 90px
+   em cima e embaixo da capa. Agora ela encolhe inteira em vez de perder
+   pedaço, e o fundo do bloco preenche o que sobra. */
+.capa-post img { width: 100%; max-height: 62vh; object-fit: contain; }
 
 /* --------------------------- o texto -------------------------- */
 /* Medida de leitura curta de propósito: 66 caracteres por linha. */

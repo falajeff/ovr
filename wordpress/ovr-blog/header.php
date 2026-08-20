@@ -28,8 +28,17 @@
       <a href="<?php echo esc_url(OVR_SITE); ?>/index.html#atacado">Atacado</a>
       <a href="<?php echo esc_url(OVR_SITE); ?>/impressao-especial.html">Impressão especial</a>
       <a href="<?php echo esc_url(OVR_SITE); ?>/filme-dtf.html">Filme DTF</a>
+      <a href="<?php echo esc_url(OVR_SITE); ?>/criacao-de-arte.html">Criação de arte</a>
       <a href="<?php echo esc_url(home_url('/')); ?>" aria-current="page">Blog</a>
     </nav>
+    <?php /* Entrar aponta para o site: a conta é de lá, e o blog não tem
+             sessão própria. Sem isto o cabeçalho do blog fica com dois
+             itens a menos que o do site, e a barra parece outra coisa.
+    
+             A CESTA não vem junto de propósito. localStorage é por origem,
+             então o blog não tem como saber o que está no carrinho, e um
+             contador travado em zero lê como defeito. Melhor não ter. */ ?>
+    <a class="btn btn--contorno nav__conta" href="<?php echo esc_url(OVR_SITE); ?>/entrar.html">Entrar</a>
     <a class="btn btn--volt nav__acao" href="<?php echo esc_url(OVR_SITE); ?>/catalogo.html">Criar pedido
       <svg class="btn__seta" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M4 10L10 4M10 4H4.8M10 4V9.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </a>
@@ -52,6 +61,7 @@
     <a href="<?php echo esc_url(OVR_SITE); ?>/filme-dtf.html"><strong>Filme DTF</strong><span>Só o filme, para quem já tem prensa</span></a>
     <a href="<?php echo esc_url(OVR_SITE); ?>/criacao-de-arte.html"><strong>Criação de arte</strong><span>Não tem estampa? A gente cria</span></a>
     <a href="<?php echo esc_url(home_url('/')); ?>"><strong>Blog</strong><span>O que decide o preço e o acabamento</span></a>
+    <a href="<?php echo esc_url(OVR_SITE); ?>/entrar.html"><strong>Minha conta</strong><span>Endereço salvo e histórico de pedidos</span></a>
   </nav>
   <div class="menu__rodape">
     <a class="btn btn--volt btn--cheio" href="<?php echo esc_url(ovr_zap()); ?>" target="_blank" rel="noopener">Falar no WhatsApp</a>
